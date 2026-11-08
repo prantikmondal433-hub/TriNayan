@@ -1,0 +1,44 @@
+[
+  {
+    "category": "Safe - Legitimate Bank Portal",
+    "url": "https://www.onlinesbi.sbi",
+    "expected_verdict": "Safe",
+    "expected_risk_range": [0, 15],
+    "notes": "Official State Bank of India portal with valid EV/OV certificate, strong HSTS/CSP headers, long domain age, and clean CT logs."
+  },
+  {
+    "category": "Safe - Established Developer Platform",
+    "url": "https://github.com",
+    "expected_verdict": "Safe",
+    "expected_risk_range": [0, 10],
+    "notes": "20+ year domain age, RSA 4096 / ECC certificate, perfect security headers."
+  },
+  {
+    "category": "Phishing - Indian Banking Impersonation",
+    "url": "https://sbi-login-secure-verify.com",
+    "expected_verdict": "Dangerous",
+    "expected_risk_range": [85, 100],
+    "notes": "Brand lookalike (edit distance 2 against sbi.co.in), young domain (<7 days), credential harvester form targeting SBI customers."
+  },
+  {
+    "category": "Phishing - Fake UPI / Payment Gateway",
+    "url": "https://paytm-kyc-reward-claim.xyz",
+    "expected_verdict": "Dangerous",
+    "expected_risk_range": [80, 100],
+    "notes": "Classic Indian payment fraud scheme targeting KYC panic with urgent phishing phrasing and foreign hosting."
+  },
+  {
+    "category": "Bad Certificate - Broken Trust & Weak Cryptography",
+    "url": "https://expired.badssl.com",
+    "expected_verdict": "Dangerous",
+    "expected_risk_range": [70, 95],
+    "notes": "Standard testing host verifying detection of expired certificates and missing intermediate chains."
+  },
+  {
+    "category": "Rogue Certificate / Shared Key Reuse",
+    "url": "https://wrong.host.badssl.com",
+    "expected_verdict": "Dangerous",
+    "expected_risk_range": [75, 95],
+    "notes": "Hostname mismatch and unverified SAN list, demonstrating that an HTTPS connection alone is never proof of safety."
+  }
+]
