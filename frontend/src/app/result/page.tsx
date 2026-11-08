@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp, ExternalLink, Flag
 } from "lucide-react";
 import { ScanResponse, ModuleResult, Verdict } from "@/lib/types";
+import { CertPanel } from "@/components/CertPanel";
 import { MOCK_SCAN_RESPONSE, MOCK_SAFE_RESPONSE } from "@/lib/mock-data";
 import { verdictColor, severityColor, severityIcon, moduleLabel } from "@/lib/utils";
 
@@ -165,7 +166,6 @@ function ResultContent() {
   }
 
   const color = verdictColor(result.verdict);
-  const moduleOrder = ["threat", "websec", "cert", "community"] as const;
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -215,9 +215,11 @@ function ResultContent() {
         <div>
           <h2 className="text-white font-semibold mb-3">Detailed Analysis</h2>
           <div className="space-y-3">
-            {moduleOrder.map((key) => (
-              <ModuleCard key={key} result={result.modules[key]} />
-            ))}
+            <ModuleCard result={result.modules.threat} />
+            <ModuleCard result={result.modules.websec} />
+            {/* Certificate gets its own rich panel */}
+            <CertPanel findings={result.modules.cert.findings} score={result.modules.cert.score} />
+            <ModuleCard result={result.modules.community} />
           </div>
         </div>
 
