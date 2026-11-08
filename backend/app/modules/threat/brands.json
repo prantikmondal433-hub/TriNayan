@@ -1,0 +1,393 @@
+{
+  "brands": [
+    {
+      "name": "Google",
+      "domains": [
+        "google.com",
+        "google.co.in",
+        "gmail.com",
+        "youtube.com"
+      ],
+      "keywords": [
+        "google",
+        "gmail",
+        "youtube"
+      ]
+    },
+    {
+      "name": "Apple",
+      "domains": [
+        "apple.com",
+        "icloud.com"
+      ],
+      "keywords": [
+        "apple",
+        "icloud"
+      ]
+    },
+    {
+      "name": "Microsoft",
+      "domains": [
+        "microsoft.com",
+        "outlook.com",
+        "live.com",
+        "office.com"
+      ],
+      "keywords": [
+        "microsoft",
+        "outlook",
+        "hotmail"
+      ]
+    },
+    {
+      "name": "Amazon",
+      "domains": [
+        "amazon.com",
+        "amazon.in",
+        "aws.amazon.com"
+      ],
+      "keywords": [
+        "amazon",
+        "aws"
+      ]
+    },
+    {
+      "name": "Facebook",
+      "domains": [
+        "facebook.com",
+        "fb.com",
+        "messenger.com",
+        "meta.com"
+      ],
+      "keywords": [
+        "facebook",
+        "fb",
+        "meta"
+      ]
+    },
+    {
+      "name": "PayPal",
+      "domains": [
+        "paypal.com"
+      ],
+      "keywords": [
+        "paypal"
+      ]
+    },
+    {
+      "name": "Netflix",
+      "domains": [
+        "netflix.com"
+      ],
+      "keywords": [
+        "netflix"
+      ]
+    },
+    {
+      "name": "LinkedIn",
+      "domains": [
+        "linkedin.com"
+      ],
+      "keywords": [
+        "linkedin"
+      ]
+    },
+    {
+      "name": "Twitter / X",
+      "domains": [
+        "twitter.com",
+        "x.com"
+      ],
+      "keywords": [
+        "twitter"
+      ]
+    },
+    {
+      "name": "WhatsApp",
+      "domains": [
+        "whatsapp.com",
+        "web.whatsapp.com"
+      ],
+      "keywords": [
+        "whatsapp"
+      ]
+    },
+    {
+      "name": "Instagram",
+      "domains": [
+        "instagram.com"
+      ],
+      "keywords": [
+        "instagram"
+      ]
+    },
+    {
+      "name": "Dropbox",
+      "domains": [
+        "dropbox.com"
+      ],
+      "keywords": [
+        "dropbox"
+      ]
+    },
+    {
+      "name": "State Bank of India",
+      "domains": [
+        "sbi.co.in",
+        "onlinesbi.sbi"
+      ],
+      "keywords": [
+        "sbi",
+        "onlinesbi"
+      ]
+    },
+    {
+      "name": "HDFC Bank",
+      "domains": [
+        "hdfcbank.com",
+        "hdfc.com"
+      ],
+      "keywords": [
+        "hdfc",
+        "hdfcbank"
+      ]
+    },
+    {
+      "name": "ICICI Bank",
+      "domains": [
+        "icicibank.com"
+      ],
+      "keywords": [
+        "icici",
+        "icicibank"
+      ]
+    },
+    {
+      "name": "Axis Bank",
+      "domains": [
+        "axisbank.com"
+      ],
+      "keywords": [
+        "axisbank",
+        "axis"
+      ]
+    },
+    {
+      "name": "Kotak Mahindra Bank",
+      "domains": [
+        "kotak.com",
+        "kotakbank.com"
+      ],
+      "keywords": [
+        "kotak"
+      ]
+    },
+    {
+      "name": "Punjab National Bank",
+      "domains": [
+        "pnbindia.in",
+        "pnbnet.in"
+      ],
+      "keywords": [
+        "pnb"
+      ]
+    },
+    {
+      "name": "Bank of Baroda",
+      "domains": [
+        "bankofbaroda.in"
+      ],
+      "keywords": [
+        "bankofbaroda",
+        "bob"
+      ]
+    },
+    {
+      "name": "Canara Bank",
+      "domains": [
+        "canarabank.com"
+      ],
+      "keywords": [
+        "canarabank",
+        "canara"
+      ]
+    },
+    {
+      "name": "Google Pay",
+      "domains": [
+        "pay.google.com"
+      ],
+      "keywords": [
+        "googlepay",
+        "gpay"
+      ]
+    },
+    {
+      "name": "PhonePe",
+      "domains": [
+        "phonepe.com"
+      ],
+      "keywords": [
+        "phonepe"
+      ]
+    },
+    {
+      "name": "Paytm",
+      "domains": [
+        "paytm.com"
+      ],
+      "keywords": [
+        "paytm"
+      ]
+    },
+    {
+      "name": "BHIM",
+      "domains": [
+        "bhimupi.org.in"
+      ],
+      "keywords": [
+        "bhim",
+        "bhimupi"
+      ]
+    },
+    {
+      "name": "Razorpay",
+      "domains": [
+        "razorpay.com"
+      ],
+      "keywords": [
+        "razorpay"
+      ]
+    },
+    {
+      "name": "Income Tax India",
+      "domains": [
+        "incometax.gov.in",
+        "incometaxindia.gov.in"
+      ],
+      "keywords": [
+        "incometax",
+        "itr"
+      ]
+    },
+    {
+      "name": "Aadhaar / UIDAI",
+      "domains": [
+        "uidai.gov.in",
+        "myaadhaar.uidai.gov.in"
+      ],
+      "keywords": [
+        "aadhaar",
+        "uidai"
+      ]
+    },
+    {
+      "name": "DigiLocker",
+      "domains": [
+        "digilocker.gov.in"
+      ],
+      "keywords": [
+        "digilocker"
+      ]
+    },
+    {
+      "name": "UMANG",
+      "domains": [
+        "umang.gov.in"
+      ],
+      "keywords": [
+        "umang"
+      ]
+    },
+    {
+      "name": "IRCTC",
+      "domains": [
+        "irctc.co.in"
+      ],
+      "keywords": [
+        "irctc"
+      ]
+    },
+    {
+      "name": "Passport Seva",
+      "domains": [
+        "passportindia.gov.in"
+      ],
+      "keywords": [
+        "passport",
+        "passportseva"
+      ]
+    },
+    {
+      "name": "EPFO / PF",
+      "domains": [
+        "epfindia.gov.in",
+        "unifiedportal-mem.epfindia.gov.in"
+      ],
+      "keywords": [
+        "epfo",
+        "epf",
+        "pf"
+      ]
+    },
+    {
+      "name": "IIT Bombay",
+      "domains": [
+        "iitb.ac.in"
+      ],
+      "keywords": [
+        "iitb",
+        "iitbombay"
+      ]
+    },
+    {
+      "name": "IIT Delhi",
+      "domains": [
+        "iitd.ac.in"
+      ],
+      "keywords": [
+        "iitd",
+        "iitdelhi"
+      ]
+    },
+    {
+      "name": "IIT Madras",
+      "domains": [
+        "iitm.ac.in"
+      ],
+      "keywords": [
+        "iitm",
+        "iitmadras"
+      ]
+    },
+    {
+      "name": "Delhi University",
+      "domains": [
+        "du.ac.in"
+      ],
+      "keywords": [
+        "du",
+        "delhiuniversity"
+      ]
+    },
+    {
+      "name": "JNU",
+      "domains": [
+        "jnu.ac.in"
+      ],
+      "keywords": [
+        "jnu"
+      ]
+    },
+    {
+      "name": "CBSE",
+      "domains": [
+        "cbse.gov.in",
+        "cbseresults.nic.in"
+      ],
+      "keywords": [
+        "cbse"
+      ]
+    }
+  ]
+}
