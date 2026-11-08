@@ -14,6 +14,10 @@ class UnsafeURLError(ValueError):
     """Raised when a URL must not be fetched."""
 
 
+class UnresolvableHostError(UnsafeURLError):
+    """Host does not resolve (DNS failure). Not a safety problem by itself."""
+
+
 def _is_blocked_ip(ip: ipaddress._BaseAddress) -> bool:
     # IPv4-mapped IPv6 (::ffff:127.0.0.1) must be judged as the IPv4 address
     mapped = getattr(ip, "ipv4_mapped", None)
@@ -42,7 +46,7 @@ def assert_public_url(url: str) -> list[str]:
         infos = socket.getaddrinfo(host, port or (443 if parsed.scheme == "https" else 80),
                                    proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:
-        raise UnsafeURLError(f"Could not resolve host: {host}") from exc
+        raise UnresolvableHostError(f"Could not resolve host: {host}") from exc
 
     ips = sorted({info[4][0] for info in infos})
     if not ips:
