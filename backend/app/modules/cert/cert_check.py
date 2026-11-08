@@ -591,3 +591,4 @@ def check_certificate_object(
     _check_ocsp_stapling(stapled_ocsp, findings)
 
     return findings
+
