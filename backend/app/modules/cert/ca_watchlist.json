@@ -1,0 +1,54 @@
+{
+  "watchlist": [
+    {
+      "name": "eMudhra",
+      "status": "under_investigation",
+      "severity": "medium",
+      "reason": "Reported CA key generation weakness under investigation",
+      "patterns": ["emudhra", "e-mudhra"]
+    },
+    {
+      "name": "WoSign",
+      "status": "distrusted",
+      "severity": "critical",
+      "reason": "Distrusted by major browsers due to backdated certificates and unauthorized issuance",
+      "patterns": ["wosign"]
+    },
+    {
+      "name": "StartCom",
+      "status": "distrusted",
+      "severity": "critical",
+      "reason": "Distrusted by major browsers due to undisclosed acquisition and failure to maintain CA standards",
+      "patterns": ["startcom", "startssl"]
+    },
+    {
+      "name": "DigiNotar",
+      "status": "revoked",
+      "severity": "critical",
+      "reason": "Severely compromised CA used to issue fraudulent certificates for state interception",
+      "patterns": ["diginotar"]
+    },
+    {
+      "name": "CNNIC",
+      "status": "restricted",
+      "severity": "high",
+      "reason": "Distrusted or restricted after unauthorized intermediate certificate issued MITM certs",
+      "patterns": ["cnnic"]
+    },
+    {
+      "name": "Trustico",
+      "status": "compromised",
+      "severity": "critical",
+      "reason": "Compromised CA entity that compromised and mass-revoked tens of thousands of private keys",
+      "patterns": ["trustico"]
+    },
+    {
+      "name": "DarkMatter",
+      "status": "distrusted",
+      "severity": "critical",
+      "reason": "Denied root inclusion by Mozilla and browser vendors over cyber-surveillance ties",
+      "patterns": ["darkmatter"]
+    }
+  ]
+}
+

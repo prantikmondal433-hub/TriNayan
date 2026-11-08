@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from app.safety import UnsafeURLError
+from app.safety import UnsafeURLError, UnresolvableHostError
 from app.schemas import Finding, ModuleResult, ScanContext
 
 from .cert_check import fetch_and_check
@@ -68,9 +68,28 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
             findings=findings,
         )
 
+    except UnresolvableHostError:
+        # A dead/unresolvable domain is common for taken-down phishing sites
+        return ModuleResult(
+            module="cert",
+            score=15,
+            confidence=0.2,
+            findings=[
+                Finding(
+                    id="CERT_NO_HTTPS",
+                    severity="medium",
+                    title="Could not connect to the website",
+                    detail=(
+                        "The domain could not be resolved. It may be "
+                        "offline, misspelled, or recently taken down."
+                    ),
+                )
+            ],
+        )
+
     except UnsafeURLError as exc:
         msg = str(exc)
-        # Unresolvable host is normal for dead phishing domains
+        # Fallback check for message in case raw UnsafeURLError was raised
         if "Could not resolve" in msg or "No addresses" in msg:
             return ModuleResult(
                 module="cert",
