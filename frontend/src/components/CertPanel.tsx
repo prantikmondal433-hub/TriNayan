@@ -1,5 +1,4 @@
-// Certificate chain visualizer component
-// Shows: Leaf → Intermediate → Root with key details
+"use client";
 
 import { Shield, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
@@ -23,7 +22,6 @@ interface CertPanelProps {
   score: number;
 }
 
-// Simulated cert chain until real data arrives (H16-24)
 const MOCK_CHAIN: CertInfo[] = [
   {
     subject: "CN=sbi-login-secure-verify.com",
@@ -70,23 +68,22 @@ function CertNode({ cert, index, total }: { cert: CertInfo; index: number; total
 
   return (
     <div className="relative">
-      {/* Connector line */}
       {!isRoot && (
-        <div className="absolute left-5 top-full w-0.5 h-4 bg-slate-600 z-10" />
+        <div className="absolute left-5 top-full w-0.5 h-3 bg-slate-700 z-10" />
       )}
 
-      <div className={`border rounded-xl overflow-hidden ${isWeak ? "border-red-500/50" : isLeaf ? "border-blue-500/30" : "border-slate-700"}`}>
+      <div className={`border rounded-xl overflow-hidden bg-slate-900/60 ${isWeak ? "border-red-500/50" : isLeaf ? "border-blue-500/40" : "border-slate-800"}`}>
         <button
           onClick={() => setExpanded((o) => !o)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-700/40 transition-colors text-left"
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-800/50 transition-colors text-left"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-sm">{label}</span>
-            <span className="text-xs text-slate-400 font-mono truncate max-w-[200px]">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold text-slate-200">{label}</span>
+            <span className="text-xs text-slate-400 font-mono truncate max-w-[220px]">
               {cert.subject.replace("CN=", "")}
             </span>
             {isWeak && (
-              <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full">
                 Weak key
               </span>
             )}
@@ -95,36 +92,36 @@ function CertNode({ cert, index, total }: { cert: CertInfo; index: number; total
         </button>
 
         {expanded && (
-          <div className="px-4 pb-4 border-t border-slate-700 pt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+          <div className="px-4 pb-4 border-t border-slate-800 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
             <div>
-              <span className="text-slate-500">Subject</span>
+              <span className="text-slate-500 font-medium">Subject</span>
               <p className="text-slate-200 font-mono mt-0.5 break-all">{cert.subject}</p>
             </div>
             <div>
-              <span className="text-slate-500">Issuer</span>
+              <span className="text-slate-500 font-medium">Issuer</span>
               <p className="text-slate-200 font-mono mt-0.5 break-all">{cert.issuer}</p>
             </div>
             <div>
-              <span className="text-slate-500">Valid from</span>
-              <p className="text-slate-200 mt-0.5">{cert.valid_from}</p>
+              <span className="text-slate-500 font-medium">Valid from</span>
+              <p className="text-slate-300 mt-0.5">{cert.valid_from}</p>
             </div>
             <div>
-              <span className="text-slate-500">Valid to</span>
-              <p className="text-slate-200 mt-0.5">{cert.valid_to}</p>
+              <span className="text-slate-500 font-medium">Valid to</span>
+              <p className="text-slate-300 mt-0.5">{cert.valid_to}</p>
             </div>
             <div>
-              <span className="text-slate-500">Key</span>
+              <span className="text-slate-500 font-medium">Cryptographic Key</span>
               <p className={`mt-0.5 font-semibold ${isWeak ? "text-red-400" : "text-green-400"}`}>
-                {cert.key_type}-{cert.key_bits} {isWeak ? "⚠ Too weak" : "✓ OK"}
+                {cert.key_type}-{cert.key_bits} {isWeak ? "⚠ Weak (<2048)" : "✓ Strong"}
               </p>
             </div>
             <div>
-              <span className="text-slate-500">Self-signed</span>
-              <p className="text-slate-200 mt-0.5">{cert.is_self_signed ? "Yes" : "No"}</p>
+              <span className="text-slate-500 font-medium">Self-Signed Root</span>
+              <p className="text-slate-300 mt-0.5">{cert.is_self_signed ? "Yes" : "No"}</p>
             </div>
-            <div className="col-span-2">
-              <span className="text-slate-500">Serial</span>
-              <p className="text-slate-400 font-mono mt-0.5 text-xs">{cert.serial}</p>
+            <div className="sm:col-span-2">
+              <span className="text-slate-500 font-medium">Serial Number</span>
+              <p className="text-slate-400 font-mono mt-0.5 text-[11px] break-all">{cert.serial}</p>
             </div>
           </div>
         )}
@@ -135,16 +132,15 @@ function CertNode({ cert, index, total }: { cert: CertInfo; index: number; total
 
 export function CertPanel({ findings, score }: CertPanelProps) {
   const [showChain, setShowChain] = useState(true);
-
   const criticalFindings = findings.filter((f) => f.severity === "critical" || f.severity === "high");
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <Shield size={16} className="text-blue-400" />
-          <span className="text-white font-semibold text-sm">Certificate Trust</span>
+          <span className="text-slate-100 font-semibold text-sm">Certificate Trust & Cryptography</span>
           {criticalFindings.length > 0 ? (
             <AlertTriangle size={14} className="text-red-400" />
           ) : (
@@ -152,30 +148,36 @@ export function CertPanel({ findings, score }: CertPanelProps) {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition-all"
               style={{
-                width: `${score}%`,
+                width: `${Math.min(100, Math.max(0, score))}%`,
                 backgroundColor: score >= 70 ? "#ef4444" : score >= 40 ? "#eab308" : "#22c55e",
               }}
             />
           </div>
-          <span className="text-xs text-slate-400 w-8">{score}</span>
+          <span className="text-xs font-mono text-slate-300 w-8 text-right">{score}</span>
         </div>
       </div>
 
-      {/* Cert findings */}
+      {/* Cert findings list */}
       {findings.length > 0 && (
-        <div className="px-5 py-4 border-b border-slate-700 space-y-2">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Issues found</p>
-          {findings.map((f) => (
-            <div key={f.id} className={`rounded-lg p-3 ${severityColor(f.severity)}`}>
+        <div className="px-5 py-3.5 border-b border-slate-800 space-y-2">
+          <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+            Flagged Certificate Findings
+          </p>
+          {findings.map((f, i) => (
+            <div key={f.id || i} className={`rounded-lg p-3 text-xs ${severityColor(f.severity)}`}>
               <div className="flex items-start gap-2">
-                <span className="text-sm mt-0.5">{severityIcon(f.severity)}</span>
-                <div>
-                  <p className="font-semibold text-sm">{f.title}</p>
-                  <p className="text-xs opacity-80 mt-0.5 leading-relaxed">{f.detail}</p>
+                <span className="text-sm shrink-0">{severityIcon(f.severity)}</span>
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-slate-100">{f.title}</p>
+                  {f.detail && (
+                    <p className="text-slate-300 opacity-90 leading-relaxed text-[11px]">
+                      {f.detail}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -183,20 +185,20 @@ export function CertPanel({ findings, score }: CertPanelProps) {
         </div>
       )}
 
-      {/* Chain visualizer */}
+      {/* Chain Visualizer */}
       <div className="px-5 py-4">
         <button
           onClick={() => setShowChain((o) => !o)}
-          className="flex items-center gap-2 text-xs text-slate-400 hover:text-white mb-4 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 mb-3 transition-colors font-medium"
         >
-          {showChain ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          {showChain ? "Hide" : "Show"} certificate chain
+          {showChain ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showChain ? "Hide" : "Inspect"} Certificate Trust Chain
         </button>
 
         {showChain && (
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-              Chain: Leaf → Intermediate → Root
+          <div className="space-y-3 pt-1">
+            <p className="text-[11px] text-slate-500 font-mono">
+              Chain Hierarchy: Leaf Certificate → Intermediate CA → Root Authority
             </p>
             {MOCK_CHAIN.map((cert, i) => (
               <CertNode key={i} cert={cert} index={i} total={MOCK_CHAIN.length} />

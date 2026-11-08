@@ -28,7 +28,7 @@ import { CertPanel } from "@/components/CertPanel";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
 
-// ── Risk Gauge ───────────────────────────────────────────────────────────────
+// ── Circular Risk Gauge ───────────────────────────────────────────────────────
 function RiskGauge({
   risk,
   verdict,
@@ -43,7 +43,7 @@ function RiskGauge({
   const offset = circumference - (Math.min(100, Math.max(0, risk)) / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 shrink-0">
       <div className="relative w-36 h-36">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
           <circle cx="60" cy="60" r="54" fill="none" stroke="#1e293b" strokeWidth="12" />
@@ -66,7 +66,7 @@ function RiskGauge({
         </div>
       </div>
       <span
-        className={`text-lg font-bold px-4 py-1 rounded-full ${color.bg} ${color.text} border ${color.border}`}
+        className={`text-sm font-bold px-4 py-1 rounded-full ${color.bg} ${color.text} border ${color.border}`}
       >
         {verdictText}
       </span>
@@ -74,7 +74,7 @@ function RiskGauge({
   );
 }
 
-// ── Generic Module Card ──────────────────────────────────────────────────────
+// ── Collapsible Module Card ──────────────────────────────────────────────────
 function ModuleCard({ result, title }: { result?: ModuleResult; title?: string }) {
   const modResult: ModuleResult = result || {
     module: "unknown",
@@ -84,27 +84,27 @@ function ModuleCard({ result, title }: { result?: ModuleResult; title?: string }
     error: null,
   };
 
-  const [open, setOpen] = useState(modResult.score >= 40);
+  const [open, setOpen] = useState(modResult.score >= 40 || modResult.findings.length > 0);
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-700/40 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-800/60 transition-colors text-left"
         aria-expanded={open}
       >
         <div className="flex items-center gap-3">
-          <span className="text-white font-semibold text-sm">
+          <span className="text-slate-100 font-semibold text-sm">
             {title || moduleLabel(modResult.module)}
           </span>
           {modResult.error && (
             <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-              ⚠ notice
+              Notice
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+          <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{
@@ -118,40 +118,40 @@ function ModuleCard({ result, title }: { result?: ModuleResult; title?: string }
               }}
             />
           </div>
-          <span className="text-xs text-slate-400 w-8 text-right font-mono">
+          <span className="text-xs font-mono text-slate-300 w-8 text-right">
             {modResult.score}
           </span>
           {open ? (
-            <ChevronUp size={14} className="text-slate-400" />
+            <ChevronUp size={16} className="text-slate-400" />
           ) : (
-            <ChevronDown size={14} className="text-slate-400" />
+            <ChevronDown size={16} className="text-slate-400" />
           )}
         </div>
       </button>
 
       {open && (
-        <div className="px-5 pb-5 space-y-3 border-t border-slate-700">
+        <div className="px-5 pb-5 space-y-2.5 border-t border-slate-800 pt-3">
           {modResult.error && (
-            <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-300 text-xs">
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-300 text-xs">
               Notice: {modResult.error}
             </div>
           )}
           {modResult.findings.length === 0 ? (
-            <p className="mt-3 text-slate-400 text-sm flex items-center gap-2">
+            <p className="text-slate-400 text-xs flex items-center gap-2 py-1">
               <CheckCircle size={14} className="text-green-400" /> No security risks identified
             </p>
           ) : (
             modResult.findings.map((f, i) => (
               <div
                 key={f.id || i}
-                className={`mt-3 rounded-lg p-4 ${severityColor(f.severity)}`}
+                className={`rounded-lg p-3 text-xs ${severityColor(f.severity)}`}
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-sm mt-0.5">{severityIcon(f.severity)}</span>
-                  <div>
-                    <p className="font-semibold text-sm">{f.title}</p>
+                  <span className="text-sm shrink-0">{severityIcon(f.severity)}</span>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-100">{f.title}</p>
                     {f.detail && (
-                      <p className="text-xs opacity-80 mt-1 leading-relaxed">
+                      <p className="text-slate-300 opacity-90 leading-relaxed">
                         {f.detail}
                       </p>
                     )}
@@ -166,7 +166,7 @@ function ModuleCard({ result, title }: { result?: ModuleResult; title?: string }
   );
 }
 
-// ── Main Result Page Component ───────────────────────────────────────────────
+// ── Main Page Content ────────────────────────────────────────────────────────
 function ResultContent() {
   const params = useSearchParams();
   const router = useRouter();
@@ -195,7 +195,6 @@ function ResultContent() {
         setIsLive(liveStatus);
         setLoading(false);
 
-        // Store into localStorage history
         addToHistory({
           url: data.url,
           risk: data.risk,
@@ -230,11 +229,10 @@ function ResultContent() {
             Examining SSL certificates, CT logs, brand signals, and security headers
           </p>
         </div>
-        {/* Skeleton UI */}
         <div className="w-full max-w-2xl px-4 space-y-3 mt-6">
-          <div className="h-28 bg-slate-800/80 rounded-2xl animate-pulse" />
-          <div className="h-16 bg-slate-800/60 rounded-xl animate-pulse" />
-          <div className="h-16 bg-slate-800/60 rounded-xl animate-pulse" />
+          <div className="h-28 bg-slate-900 rounded-2xl animate-pulse" />
+          <div className="h-16 bg-slate-900 rounded-xl animate-pulse" />
+          <div className="h-16 bg-slate-900 rounded-xl animate-pulse" />
         </div>
       </div>
     );
@@ -275,54 +273,56 @@ function ResultContent() {
       : t("dangerousHeadline");
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* Top Navigation */}
-      <nav className="flex items-center gap-3 px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-950/90 backdrop-blur z-10">
-        <Shield className="text-blue-400" size={20} />
-        <span className="font-bold text-white tracking-tight">TrustLens</span>
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/95 sticky top-0 z-20 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <Shield className="text-blue-400" size={22} />
+          <span className="font-bold text-white text-lg tracking-tight">TrustLens</span>
 
-        {/* Live / Simulated Pill */}
-        <div className="ml-2 sm:ml-4 flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700">
-          {isLive ? (
-            <>
-              <Zap size={12} className="text-green-400 fill-green-400" />
-              <span className="text-green-300 font-medium hidden sm:inline">
-                {t("liveConnected")}
-              </span>
-            </>
-          ) : (
-            <>
-              <Server size={12} className="text-yellow-400" />
-              <span className="text-yellow-300 font-medium hidden sm:inline">
-                {t("demoMode")}
-              </span>
-            </>
-          )}
+          {/* Live / Simulated Connectivity Badge */}
+          <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800">
+            {isLive ? (
+              <>
+                <Zap size={12} className="text-green-400 fill-green-400" />
+                <span className="text-green-300 font-medium hidden sm:inline">
+                  {t("liveConnected")}
+                </span>
+              </>
+            ) : (
+              <>
+                <Server size={12} className="text-yellow-400" />
+                <span className="text-yellow-300 font-medium hidden sm:inline">
+                  {t("demoMode")}
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <LanguageSelector />
           <Link
             href="/"
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors"
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white text-xs sm:text-sm transition-colors"
           >
             <ArrowLeft size={14} /> {t("newScan")}
           </Link>
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Verdict Hero Card */}
-        <div className={`rounded-2xl border p-6 sm:p-8 ${color.bg} ${color.border}`}>
-          <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+        <div className={`rounded-2xl border p-6 sm:p-7 ${color.bg} ${color.border} shadow-lg`}>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
             <RiskGauge
               risk={result.risk}
               verdict={result.verdict}
               verdictText={tVerdict(result.verdict)}
             />
-            <div className="flex-1 text-center sm:text-left">
-              <p className="text-xs font-mono text-slate-400 mb-2 break-all">{result.url}</p>
-              <h1 className={`text-2xl sm:text-3xl font-black mb-3 ${color.text}`}>
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <p className="text-xs font-mono text-slate-400 break-all">{result.url}</p>
+              <h1 className={`text-2xl sm:text-3xl font-extrabold ${color.text}`}>
                 {headline}
               </h1>
               <p className="text-slate-300 text-sm leading-relaxed">
@@ -332,73 +332,71 @@ function ResultContent() {
           </div>
         </div>
 
-        {/* Top plain-language reasons */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
+        {/* Top Plain-Language Reasons */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+          <h2 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
             <AlertTriangle size={15} className="text-yellow-400" /> {t("whyVerdict")}
           </h2>
           {result.reasons && result.reasons.length > 0 ? (
             <ul className="space-y-2">
               {result.reasons.map((r, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+                <li key={i} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300">
                   <span className="text-slate-500 font-mono text-xs w-4 mt-0.5">{i + 1}.</span>
                   <span>{getReasonTitle(r)}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-slate-400 text-sm">No critical risk triggers flagged for this site.</p>
+            <p className="text-slate-400 text-xs">No critical risk triggers flagged for this site.</p>
           )}
         </div>
 
         {/* Detailed Module Breakdown */}
-        <div>
-          <h2 className="text-white font-semibold text-lg mb-4">{t("detailedInspection")}</h2>
-          <div className="space-y-4">
-            {result.modules?.threat && (
-              <ModuleCard result={result.modules.threat} title={t("threatModule")} />
-            )}
-            {result.modules?.websec && (
-              <ModuleCard result={result.modules.websec} title={t("websecModule")} />
-            )}
-            {/* Certificate gets dedicated deep chain panel */}
-            <CertPanel
-              findings={certModule.findings || []}
-              score={certModule.score || 0}
-            />
-            {result.modules?.community && (
-              <ModuleCard result={result.modules.community} title={t("communityModule")} />
-            )}
-          </div>
+        <div className="space-y-3">
+          <h2 className="text-white font-semibold text-sm">{t("detailedInspection")}</h2>
+          {result.modules?.threat && (
+            <ModuleCard result={result.modules.threat} title={t("threatModule")} />
+          )}
+          {result.modules?.websec && (
+            <ModuleCard result={result.modules.websec} title={t("websecModule")} />
+          )}
+          {/* Certificate Deep Inspection Panel */}
+          <CertPanel
+            findings={certModule.findings || []}
+            score={certModule.score || 0}
+          />
+          {result.modules?.community && (
+            <ModuleCard result={result.modules.community} title={t("communityModule")} />
+          )}
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap gap-3 pt-2">
+        {/* Action Controls Bar */}
+        <div className="flex flex-wrap items-center gap-3 pt-3">
           <a
             href={result.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-xs sm:text-sm transition-colors"
           >
             <ExternalLink size={14} /> {t("openSite")}
           </a>
           <Link
             href={`/report?url=${encodeURIComponent(result.url)}`}
-            className="flex items-center gap-2 px-4 py-2.5 bg-red-900/40 border border-red-700/50 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-red-950/60 hover:bg-red-900/60 border border-red-800/60 text-red-300 rounded-lg text-xs sm:text-sm transition-colors"
           >
             <Flag size={14} /> {t("reportSite")}
           </Link>
           <Link
             href="/"
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs sm:text-sm transition-colors ml-auto"
           >
             <Shield size={14} /> {t("scanAnother")}
           </Link>
         </div>
 
-        <p className="text-xs text-slate-600 text-center">
+        <p className="text-xs text-slate-600 text-center pt-2">
           Scanned at {result.scanned_at ? new Date(result.scanned_at).toLocaleString() : "Just now"} ·
-          Results are probabilistic risk signals, not legal or CA proof.
+          Results represent probabilistic risk signals · Passive scanning only
         </p>
       </div>
     </main>
