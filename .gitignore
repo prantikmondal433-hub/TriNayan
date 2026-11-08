@@ -6,3 +6,6 @@ node_modules/
 .next/
 ml/data/
 *.joblib
+*.db
+*.sqlite*
+.pytest_cache/
