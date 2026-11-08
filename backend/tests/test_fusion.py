@@ -1,6 +1,6 @@
 import pytest
 
-from app.fusion import fuse
+from app.fusion import ACTIONS, fuse
 from app.schemas import Finding, ModuleResult
 
 
@@ -53,3 +53,101 @@ def test_reasons_sorted_by_severity_and_capped_at_five():
     assert len(reasons) == 5
     assert reasons[0].severity == "critical"
     assert reasons[1].severity == "high"
+
+
+# ── Override Rule 1: Community blocklist ──────────────────────────────────────
+
+
+def test_override_blocklisted():
+    finding = Finding(id="COMMUNITY_BLOCKLISTED", severity="critical", title="In threat feed")
+    res = {
+        "threat": mk("threat", 10),
+        "websec": mk("websec", 10),
+        "cert": mk("cert", 10),
+        "community": mk("community", 60, findings=[finding]),
+    }
+    risk, verdict, _, action = fuse(res)
+    assert risk >= 90
+    assert verdict == "Dangerous"
+    assert action == ACTIONS["BlocklistOverride"]
+
+
+def test_override_blocklisted_does_not_fire_if_module_errored():
+    finding = Finding(id="COMMUNITY_BLOCKLISTED", severity="critical", title="In threat feed")
+    res = {
+        "threat": mk("threat", 10),
+        "websec": mk("websec", 10),
+        "cert": mk("cert", 10),
+        "community": mk("community", 60, findings=[finding], error="DB error"),
+    }
+    risk, verdict, _, _ = fuse(res)
+    # Calculated only from non-errored modules (all score 10)
+    assert risk == 10
+    assert verdict == "Safe"
+
+
+# ── Override Rule 2: Brand + Password + Young Domain ──────────────────────────
+
+
+def test_override_credential_phishing():
+    f_brand = Finding(id="THREAT_BRAND_IMPERSONATION", severity="high", title="Brand typo")
+    f_pass = Finding(id="WEBSEC_PASSWORD_FORM", severity="high", title="Password field")
+    f_young = Finding(id="THREAT_YOUNG_DOMAIN", severity="medium", title="Registered 2 days ago")
+
+    res = {
+        "threat": mk("threat", 30, findings=[f_brand, f_young]),
+        "websec": mk("websec", 20, findings=[f_pass]),
+        "cert": mk("cert", 10),
+        "community": mk("community", 0),
+    }
+    risk, verdict, _, action = fuse(res)
+    assert risk >= 90
+    assert verdict == "Dangerous"
+    assert action == ACTIONS["CredentialPhishOverride"]
+
+
+def test_override_credential_phishing_requires_all_three():
+    # Missing young domain
+    f_brand = Finding(id="THREAT_BRAND_IMPERSONATION", severity="high", title="Brand typo")
+    f_pass = Finding(id="WEBSEC_PASSWORD_FORM", severity="high", title="Password field")
+
+    res = {
+        "threat": mk("threat", 20, findings=[f_brand]),
+        "websec": mk("websec", 20, findings=[f_pass]),
+        "cert": mk("cert", 10),
+        "community": mk("community", 0),
+    }
+    risk, verdict, _, _ = fuse(res)
+    assert risk < 90
+
+
+# ── Override Rule 3: Bad cert + Login form ────────────────────────────────────
+
+
+@pytest.mark.parametrize("cert_finding_id", ["CERT_EXPIRED", "CERT_SELF_SIGNED"])
+def test_override_bad_cert_login(cert_finding_id):
+    f_cert = Finding(id=cert_finding_id, severity="high", title="Invalid cert")
+    f_login = Finding(id="WEBSEC_LOGIN_FORM", severity="medium", title="Login form detected")
+
+    res = {
+        "threat": mk("threat", 10),
+        "websec": mk("websec", 15, findings=[f_login]),
+        "cert": mk("cert", 30, findings=[f_cert]),
+        "community": mk("community", 0),
+    }
+    risk, verdict, _, action = fuse(res)
+    assert risk >= 70
+    assert verdict == "Dangerous"
+    assert action == ACTIONS["InsecureLoginOverride"]
+
+
+def test_override_bad_cert_without_login_form_no_override():
+    f_cert = Finding(id="CERT_EXPIRED", severity="high", title="Expired cert")
+    res = {
+        "threat": mk("threat", 10),
+        "websec": mk("websec", 10),
+        "cert": mk("cert", 30, findings=[f_cert]),
+        "community": mk("community", 0),
+    }
+    risk, verdict, _, _ = fuse(res)
+    assert risk < 70

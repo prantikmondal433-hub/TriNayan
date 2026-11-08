@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: trustlens-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: trustlens-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=sqlite:///trustlens_community.db
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+      - redis
+    restart: unless-stopped
