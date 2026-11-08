@@ -6,3 +6,5 @@ pytest>=8
 pytest-asyncio>=1.0
 sqlalchemy>=2.0
 aiosqlite>=0.20
+redis>=5.0
+slowapi>=0.1.9

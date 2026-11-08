@@ -16,6 +16,7 @@ from app.community.models import (
     get_db,
     make_reporter_id,
 )
+from app.limiter import limiter
 
 # Use in-memory SQLite with StaticPool so all threads & sessions share the exact same DB
 TEST_ENGINE = create_engine(
@@ -38,6 +39,7 @@ def override_get_db():
 from app.main import app  # noqa: E402
 
 app.dependency_overrides[get_db] = override_get_db
+limiter.enabled = False
 client = TestClient(app)
 
 
@@ -127,6 +129,21 @@ class TestReportEndpoint:
                 "comment": "",
             })
             assert r.status_code == 201, f"Category {cat} rejected: {r.text}"
+
+    def test_report_rate_limiting(self):
+        limiter.enabled = True
+        try:
+            status_codes = []
+            for i in range(15):
+                r = client.post("/report", json={
+                    "url": f"https://flood{i}.example.com",
+                    "category": "phishing",
+                    "comment": "",
+                })
+                status_codes.append(r.status_code)
+            assert 429 in status_codes
+        finally:
+            limiter.enabled = False
 
 
 class TestReportsEndpoint:

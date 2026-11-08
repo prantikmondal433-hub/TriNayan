@@ -16,6 +16,7 @@ from app.community.models import (
     get_db,
     make_reporter_id,
 )
+from app.limiter import limiter
 from app.schemas import ReportRequest
 
 router = APIRouter(tags=["community"])
@@ -30,6 +31,7 @@ def _extract_domain(url: str) -> str:
 
 
 @router.post("/report", status_code=201)
+@limiter.limit("10/minute")
 def create_report(req: ReportRequest, request: Request, db: Session = Depends(get_db)):
     """Submit a community report about a suspicious URL."""
     # Validate category
