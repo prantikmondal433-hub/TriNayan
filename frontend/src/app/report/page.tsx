@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Shield, ArrowLeft, Flag, CheckCircle, AlertTriangle } from "lucide-react";
 import { submitReport } from "@/lib/api";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 const CATEGORIES = [
   "Phishing / Credential Harvesting",
@@ -19,6 +21,7 @@ const CATEGORIES = [
 function ReportForm() {
   const params = useSearchParams();
   const prefillUrl = params.get("url") ?? "";
+  const { t } = useLanguage();
 
   const [url, setUrl] = useState(prefillUrl);
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -59,17 +62,16 @@ function ReportForm() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 text-center">
         <CheckCircle size={56} className="text-green-400" />
-        <h2 className="text-white text-2xl font-bold">Threat Report Submitted</h2>
+        <h2 className="text-white text-2xl font-bold">{t("reportSuccess")}</h2>
         <p className="text-slate-400 max-w-sm text-sm leading-relaxed">
-          Thank you for protecting the community. Your report has been registered into our
-          threat intelligence database for reputation-weighted verification.
+          {t("reportSuccessDesc")}
         </p>
         <div className="flex gap-3 mt-4">
           <Link
             href="/"
             className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors font-medium"
           >
-            Scan another URL
+            {t("scanAnother")}
           </Link>
           <button
             onClick={() => {
@@ -97,7 +99,7 @@ function ReportForm() {
 
       <div>
         <label className="block text-sm text-slate-300 mb-1.5 font-medium">
-          Suspicious URL *
+          {t("urlToReport")}
         </label>
         <input
           type="text"
@@ -111,7 +113,7 @@ function ReportForm() {
 
       <div>
         <label className="block text-sm text-slate-300 mb-1.5 font-medium">
-          Threat Category *
+          {t("threatCategory")}
         </label>
         <select
           value={category}
@@ -128,7 +130,7 @@ function ReportForm() {
 
       <div>
         <label className="block text-sm text-slate-300 mb-1.5 font-medium">
-          Evidence or Context (Optional)
+          {t("comments")}
         </label>
         <textarea
           value={comment}
@@ -145,7 +147,7 @@ function ReportForm() {
         className="w-full flex items-center justify-center gap-2 py-3.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all shadow-lg shadow-red-600/20 active:scale-[0.99]"
       >
         <Flag size={15} />
-        {loading ? "Submitting to threat network..." : "Submit Threat Report"}
+        {loading ? t("submitting") : t("submitReport")}
       </button>
 
       <p className="text-xs text-slate-500 text-center leading-relaxed">
@@ -157,27 +159,32 @@ function ReportForm() {
 }
 
 export default function ReportPage() {
+  const { t } = useLanguage();
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <nav className="flex items-center gap-3 px-6 py-4 border-b border-slate-800">
         <Shield className="text-blue-400" size={20} />
         <span className="font-bold text-white">TrustLens</span>
-        <Link
-          href="/"
-          className="ml-auto flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors"
-        >
-          <ArrowLeft size={14} /> Home
-        </Link>
+
+        <div className="ml-auto flex items-center gap-3">
+          <LanguageSelector />
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors"
+          >
+            <ArrowLeft size={14} /> {t("home")}
+          </Link>
+        </div>
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 py-10">
         <div className="mb-8 text-center sm:text-left">
           <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center justify-center sm:justify-start gap-2.5 mb-2">
-            <Flag size={24} className="text-red-400" /> Report a Malicious Website
+            <Flag size={24} className="text-red-400" /> {t("reportTitle")}
           </h1>
           <p className="text-slate-400 text-sm">
-            Help safeguard Indian citizens and users worldwide by flagging deceptive portals,
-            fake payment gateways, or credential harvesters.
+            {t("reportSubtitle")}
           </p>
         </div>
 

@@ -25,9 +25,19 @@ import {
   getReasonTitle,
 } from "@/lib/utils";
 import { CertPanel } from "@/components/CertPanel";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 // ── Risk Gauge ───────────────────────────────────────────────────────────────
-function RiskGauge({ risk, verdict }: { risk: number; verdict: Verdict }) {
+function RiskGauge({
+  risk,
+  verdict,
+  verdictText,
+}: {
+  risk: number;
+  verdict: Verdict;
+  verdictText: string;
+}) {
   const color = verdictColor(verdict);
   const circumference = 2 * Math.PI * 54;
   const offset = circumference - (Math.min(100, Math.max(0, risk)) / 100) * circumference;
@@ -58,7 +68,7 @@ function RiskGauge({ risk, verdict }: { risk: number; verdict: Verdict }) {
       <span
         className={`text-lg font-bold px-4 py-1 rounded-full ${color.bg} ${color.text} border ${color.border}`}
       >
-        {verdict}
+        {verdictText}
       </span>
     </div>
   );
@@ -161,6 +171,7 @@ function ResultContent() {
   const params = useSearchParams();
   const router = useRouter();
   const rawUrl = params.get("url") ?? "";
+  const { t, tVerdict } = useLanguage();
 
   const [result, setResult] = useState<ScanResponse | null>(null);
   const [isLive, setIsLive] = useState(false);
@@ -256,6 +267,13 @@ function ResultContent() {
     error: null,
   };
 
+  const headline =
+    result.verdict === "Safe"
+      ? t("safeHeadline")
+      : result.verdict === "Suspicious"
+      ? t("suspiciousHeadline")
+      : t("dangerousHeadline");
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Top Navigation */}
@@ -264,41 +282,48 @@ function ResultContent() {
         <span className="font-bold text-white tracking-tight">TrustLens</span>
 
         {/* Live / Simulated Pill */}
-        <div className="ml-4 flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700">
+        <div className="ml-2 sm:ml-4 flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700">
           {isLive ? (
             <>
               <Zap size={12} className="text-green-400 fill-green-400" />
-              <span className="text-green-300 font-medium">Live Backend Connected</span>
+              <span className="text-green-300 font-medium hidden sm:inline">
+                {t("liveConnected")}
+              </span>
             </>
           ) : (
             <>
               <Server size={12} className="text-yellow-400" />
-              <span className="text-yellow-300 font-medium">Demo Standalone Mode</span>
+              <span className="text-yellow-300 font-medium hidden sm:inline">
+                {t("demoMode")}
+              </span>
             </>
           )}
         </div>
 
-        <Link
-          href="/"
-          className="ml-auto flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors"
-        >
-          <ArrowLeft size={14} /> New scan
-        </Link>
+        <div className="ml-auto flex items-center gap-3">
+          <LanguageSelector />
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors"
+          >
+            <ArrowLeft size={14} /> {t("newScan")}
+          </Link>
+        </div>
       </nav>
 
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
         {/* Verdict Hero Card */}
         <div className={`rounded-2xl border p-6 sm:p-8 ${color.bg} ${color.border}`}>
           <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
-            <RiskGauge risk={result.risk} verdict={result.verdict} />
+            <RiskGauge
+              risk={result.risk}
+              verdict={result.verdict}
+              verdictText={tVerdict(result.verdict)}
+            />
             <div className="flex-1 text-center sm:text-left">
               <p className="text-xs font-mono text-slate-400 mb-2 break-all">{result.url}</p>
               <h1 className={`text-2xl sm:text-3xl font-black mb-3 ${color.text}`}>
-                {result.verdict === "Safe"
-                  ? "✅ This site looks safe"
-                  : result.verdict === "Suspicious"
-                  ? "⚠️ Proceed with caution"
-                  : "🚨 High Phishing / Security Risk"}
+                {headline}
               </h1>
               <p className="text-slate-300 text-sm leading-relaxed">
                 {result.recommended_action}
@@ -310,7 +335,7 @@ function ResultContent() {
         {/* Top plain-language reasons */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
           <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
-            <AlertTriangle size={15} className="text-yellow-400" /> Top Risk Signals
+            <AlertTriangle size={15} className="text-yellow-400" /> {t("whyVerdict")}
           </h2>
           {result.reasons && result.reasons.length > 0 ? (
             <ul className="space-y-2">
@@ -328,13 +353,13 @@ function ResultContent() {
 
         {/* Detailed Module Breakdown */}
         <div>
-          <h2 className="text-white font-semibold text-lg mb-4">Detailed Module Inspection</h2>
+          <h2 className="text-white font-semibold text-lg mb-4">{t("detailedInspection")}</h2>
           <div className="space-y-4">
             {result.modules?.threat && (
-              <ModuleCard result={result.modules.threat} title="Threat & Lexical Analysis" />
+              <ModuleCard result={result.modules.threat} title={t("threatModule")} />
             )}
             {result.modules?.websec && (
-              <ModuleCard result={result.modules.websec} title="Web Security Hygiene" />
+              <ModuleCard result={result.modules.websec} title={t("websecModule")} />
             )}
             {/* Certificate gets dedicated deep chain panel */}
             <CertPanel
@@ -342,7 +367,7 @@ function ResultContent() {
               score={certModule.score || 0}
             />
             {result.modules?.community && (
-              <ModuleCard result={result.modules.community} title="Community Threat Intel" />
+              <ModuleCard result={result.modules.community} title={t("communityModule")} />
             )}
           </div>
         </div>
@@ -355,19 +380,19 @@ function ResultContent() {
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors"
           >
-            <ExternalLink size={14} /> Open site
+            <ExternalLink size={14} /> {t("openSite")}
           </a>
           <Link
             href={`/report?url=${encodeURIComponent(result.url)}`}
             className="flex items-center gap-2 px-4 py-2.5 bg-red-900/40 border border-red-700/50 text-red-300 rounded-lg text-sm hover:bg-red-900/60 transition-colors"
           >
-            <Flag size={14} /> Report this site
+            <Flag size={14} /> {t("reportSite")}
           </Link>
           <Link
             href="/"
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors"
           >
-            <Shield size={14} /> Scan another URL
+            <Shield size={14} /> {t("scanAnother")}
           </Link>
         </div>
 

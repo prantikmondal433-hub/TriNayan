@@ -15,9 +15,12 @@ import {
 } from "lucide-react";
 import { getHistory, clearHistory, HistoryEntry } from "@/lib/api";
 import { verdictColor } from "@/lib/utils";
+import { useLanguage } from "@/context/LanguageContext";
+import { LanguageSelector } from "@/components/LanguageSelector";
 
 export default function HomePage() {
   const router = useRouter();
+  const { t, tVerdict } = useLanguage();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -66,23 +69,23 @@ export default function HomePage() {
       <nav className="flex items-center gap-3 px-6 py-4 border-b border-slate-800">
         <Shield className="text-blue-400" size={24} />
         <span className="font-bold text-white text-lg tracking-tight">TrustLens</span>
-        <div className="ml-auto flex items-center gap-4 text-xs">
+
+        <div className="ml-auto flex items-center gap-3 sm:gap-4 text-xs">
+          {/* Language Selector */}
+          <LanguageSelector />
+
           <Link
             href="/monitor"
-            className="text-slate-400 hover:text-slate-200 transition-colors"
+            className="text-slate-400 hover:text-slate-200 transition-colors hidden sm:inline"
           >
-            CT Sentinel
+            {t("ctSentinel")}
           </Link>
           <Link
             href="/report"
             className="text-slate-400 hover:text-slate-200 transition-colors"
           >
-            Report Phishing
+            {t("reportPhishing")}
           </Link>
-          <span className="text-slate-600 hidden sm:inline">|</span>
-          <span className="text-slate-500 hidden sm:inline">
-            Explainable AI Trust
-          </span>
         </div>
       </nav>
 
@@ -92,16 +95,16 @@ export default function HomePage() {
         <div className="mb-6 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-full px-4 py-1.5">
           <Lock size={13} className="text-blue-400" />
           <span className="text-blue-300 text-xs font-medium">
-            Passive Security Analysis · Safe & Private
+            {t("heroBadge")}
           </span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight tracking-tight">
-          Is this website <span className="text-blue-400">genuinely safe?</span>
+          {t("heroTitle1")}{" "}
+          <span className="text-blue-400">{t("heroTitleHighlight")}</span>
         </h1>
         <p className="text-slate-400 text-base sm:text-lg max-w-xl mb-10 leading-relaxed">
-          Padlocks only prove encryption, not honesty. TrustLens examines SSL certificate
-          chains, brand impersonation, passive headers, and live threat intelligence.
+          {t("heroSubtitle")}
         </p>
 
         {/* Scan Input Form */}
@@ -120,7 +123,7 @@ export default function HomePage() {
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="Enter URL to inspect, e.g. https://sbi-login-verify.com"
+                placeholder={t("inputPlaceholder")}
                 aria-label="URL to scan"
                 className="w-full pl-11 pr-4 py-4 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base shadow-lg"
               />
@@ -130,7 +133,7 @@ export default function HomePage() {
               className="flex items-center justify-center gap-2 px-7 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-lg shadow-blue-600/20 active:scale-[0.98]"
             >
               <Search size={18} />
-              <span>Inspect Site</span>
+              <span>{t("inspectBtn")}</span>
             </button>
           </div>
           {error && (
@@ -142,7 +145,7 @@ export default function HomePage() {
 
         {/* Demo Examples */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-slate-500">Quick tests:</span>
+          <span className="text-slate-500">{t("quickTests")}</span>
           {examples.map((ex) => (
             <button
               key={ex.url}
@@ -159,14 +162,14 @@ export default function HomePage() {
           <div className="mt-12 w-full max-w-2xl text-left bg-slate-900/60 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock size={14} className="text-slate-500" /> Recent Scans
+                <Clock size={14} className="text-slate-500" /> {t("recentScans")}
               </span>
               <button
                 onClick={handleClearHistory}
                 className="text-xs text-slate-500 hover:text-slate-400 flex items-center gap-1"
                 title="Clear history"
               >
-                <Trash2 size={12} /> Clear
+                <Trash2 size={12} /> {t("clearHistory")}
               </button>
             </div>
             <div className="space-y-2">
@@ -185,7 +188,7 @@ export default function HomePage() {
                       <span
                         className={`text-xs px-2 py-0.5 rounded-full font-medium ${color.bg} ${color.text}`}
                       >
-                        {h.verdict} ({h.risk})
+                        {tVerdict(h.verdict as any)} ({h.risk})
                       </span>
                       <ArrowRight
                         size={14}
@@ -204,22 +207,22 @@ export default function HomePage() {
           {[
             {
               icon: "🎯",
-              title: "Threat & ML Analysis",
+              title: t("threatModule"),
               desc: "Brand lookalikes, homoglyphs, and lexical heuristic checks.",
             },
             {
               icon: "🔒",
-              title: "Certificate Trust",
+              title: t("certModule"),
               desc: "CT log search, CA key reuse detection, and crypto audits.",
             },
             {
               icon: "🛡️",
-              title: "Web Security",
+              title: t("websecModule"),
               desc: "Passive header posture (HSTS, CSP) and cookie security flags.",
             },
             {
               icon: "👥",
-              title: "Community Intel",
+              title: t("communityModule"),
               desc: "Collaborative crowdsourced reports and live blocklists.",
             },
           ].map((f) => (
