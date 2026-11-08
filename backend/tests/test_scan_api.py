@@ -5,7 +5,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import orchestrator
+from app.community.models import init_db
 from app.main import app
+
+# Ensure tables exist
+init_db()
 
 client = TestClient(app)
 
@@ -26,7 +30,10 @@ def public_dns(monkeypatch):
 
 
 def test_health():
-    assert client.get("/health").json() == {"status": "ok"}
+    data = client.get("/health").json()
+    assert data["status"] == "ok"
+    assert "database" in data
+    assert "redis" in data
 
 
 def test_scan_returns_full_response():
@@ -70,3 +77,43 @@ def test_unresolvable_host_still_scanned(monkeypatch):
         raise socket.gaierror("nxdomain")
     monkeypatch.setattr(socket, "getaddrinfo", nxdomain)
     assert client.post("/scan", json={"url": "https://dead-phish.example/"}).status_code == 200
+
+
+def test_health_reports_components():
+    r = client.get("/health")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "ok"
+    assert data["database"] == "ok"
+    assert data["redis"] in {"ok", "disabled", "unreachable"}
+
+
+@pytest.mark.asyncio
+async def test_redis_cache_used_when_available(monkeypatch):
+    class FakeRedis:
+        def __init__(self):
+            self.store = {}
+        async def get(self, key):
+            return self.store.get(key)
+        async def set(self, key, val, ex=None):
+            self.store[key] = val
+        async def ping(self):
+            return True
+
+    fake = FakeRedis()
+    monkeypatch.setattr(orchestrator, "get_redis_client", lambda: fake)
+    monkeypatch.setattr(orchestrator, "REDIS_URL", "redis://fake:6379")
+
+    # Scan once -> should write to redis
+    r = await orchestrator.scan("https://cached-test.example.com")
+    assert r.url == "https://cached-test.example.com/"
+    assert "scan:https://cached-test.example.com/" in fake.store
+
+    # Modify stored verdict in fake redis to verify hit comes from redis
+    stored = orchestrator.ScanResponse.model_validate_json(fake.store["scan:https://cached-test.example.com/"])
+    stored.risk = 99
+    fake.store["scan:https://cached-test.example.com/"] = stored.model_dump_json()
+
+    # Scan again -> should get cached response with risk 99
+    r2 = await orchestrator.scan("https://cached-test.example.com")
+    assert r2.risk == 99

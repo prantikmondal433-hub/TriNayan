@@ -2,13 +2,16 @@
 
 Exposes the contract: ``async def analyze(url, ctx) -> ModuleResult``.
 
-Phase 1 (H2-8):  URL lexical features + brand impersonation.
-Phase 2 (H8-16): ML model scoring with SHAP explanations.
-Phase 3 (H16-24): Redirect tracing, domain intel, page analysis.
+Pipeline:
+1. URL lexical features (20 features)
+2. Brand impersonation detection (homoglyphs + edit-distance)
+3. ML model prediction (XGBoost) + SHAP explanations
+4. Fallback to heuristic scoring if model unavailable
 """
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from app.schemas import Finding, ModuleResult, ScanContext
@@ -18,6 +21,233 @@ from .url_features import extract_features, heuristic_score
 
 logger = logging.getLogger(__name__)
 
+# ── Lazy-loaded model and explainer ──────────────────────────────────
+_model = None
+_explainer = None
+_feature_names = None
+_model_load_attempted = False
+
+MODEL_PATH = Path(__file__).resolve().parent.parent.parent.parent.parent / "ml" / "model.joblib"
+
+# SHAP feature → plain-English mapping
+FEATURE_EXPLANATIONS: dict[str, str] = {
+    "url_length": "The URL is unusually long, which is common in phishing links",
+    "host_length": "The domain name is unusually long",
+    "path_length": "The URL path is unusually long",
+    "query_length": "The URL has a long query string with many parameters",
+    "fragment_length": "The URL contains an unusual fragment section",
+    "subdomain_depth": "The domain has many subdomains, making the real host hard to see",
+    "path_depth": "The URL has a deeply nested path structure",
+    "digit_ratio": "The domain name contains an unusual number of digits",
+    "hyphen_count": "The domain name contains many hyphens",
+    "at_sign": "The URL contains an @ sign that can redirect to a different site",
+    "has_at_in_path": "The URL path contains an @ sign",
+    "ip_as_host": "The website uses a raw IP address instead of a domain name",
+    "punycode": "The domain uses international characters that can mimic real brands",
+    "entropy": "The domain name looks randomly generated",
+    "tld_risk": "The domain uses a top-level domain often abused by phishing sites",
+    "keyword_count": "The URL contains words commonly used in phishing (login, verify, etc.)",
+    "is_shortener": "The URL uses a link-shortening service that hides the real destination",
+    "has_double_slash_redirect": "The URL contains a redirect trick using double slashes",
+    "non_standard_port": "The website uses a non-standard port number",
+    "uses_https": "The website does not use secure HTTPS encryption",
+}
+
+
+def _get_model():
+    """Lazy-load the model and SHAP explainer once."""
+    global _model, _explainer, _feature_names, _model_load_attempted
+    if _model_load_attempted:
+        return _model, _explainer, _feature_names
+
+    _model_load_attempted = True
+    if not MODEL_PATH.exists():
+        logger.info("Model not found at %s – will use heuristic scoring", MODEL_PATH)
+        return None, None, None
+
+    try:
+        import joblib
+        import shap
+
+        loaded = joblib.load(MODEL_PATH)
+        _model = loaded["model"]
+        _feature_names = loaded["feature_names"]
+        _explainer = shap.TreeExplainer(_model)
+        logger.info("Loaded threat ML model from %s", MODEL_PATH)
+    except Exception as exc:
+        logger.warning("Failed to load ML model: %s", exc)
+        _model = None
+        _explainer = None
+        _feature_names = None
+
+    return _model, _explainer, _feature_names
+
+
+def _ml_predict(
+    features: dict,
+) -> tuple[int, float, list[Finding]] | tuple[None, None, list[Finding]]:
+    """Predict phishing probability and return score (0-100), confidence, and SHAP findings."""
+    model, explainer, feature_names = _get_model()
+    if model is None:
+        return None, None, []
+
+    try:
+        import pandas as pd
+
+        X = pd.DataFrame([features])
+        prob = float(model.predict_proba(X)[0][1])
+        score = int(round(prob * 100))
+        confidence = 0.85  # ML model with group-split evaluation gives high confidence
+
+        # SHAP explanations
+        findings: list[Finding] = []
+        if explainer is not None:
+            shap_values = explainer.shap_values(X)
+            sv = shap_values[1][0] if isinstance(shap_values, list) else shap_values[0]
+
+            contributions = list(zip(feature_names, sv, [features.get(f, 0) for f in feature_names]))
+            contributions.sort(key=lambda x: abs(x[1]), reverse=True)
+
+            for fname, shap_val, fval in contributions[:4]:
+                if shap_val <= 0.1:
+                    continue  # only report features that increase phishing risk
+
+                abs_sv = abs(shap_val)
+                if abs_sv > 1.0:
+                    severity = "high"
+                elif abs_sv > 0.4:
+                    severity = "medium"
+                else:
+                    severity = "low"
+
+                title = FEATURE_EXPLANATIONS.get(fname, f"Suspicious pattern in {fname}")
+                findings.append(Finding(
+                    id=f"THREAT_ML_{fname.upper()}",
+                    severity=severity,
+                    title=title,
+                    detail=f"Detected pattern: {fname} = {fval}",
+                    evidence={"feature": fname, "value": fval, "shap_importance": round(float(shap_val), 3)},
+                ))
+
+        return score, confidence, findings
+
+    except Exception as exc:
+        logger.warning("ML prediction failed: %s", exc)
+        return None, None, []
+
+
+# ── Public contract ──────────────────────────────────────────────────
+
+MODEL_PATH = Path(__file__).resolve().parent.parent.parent.parent.parent / "ml" / "model.joblib"
+
+# SHAP feature → plain-English mapping
+FEATURE_EXPLANATIONS: dict[str, str] = {
+    "url_length": "The URL is unusually long, which is common in phishing links",
+    "host_length": "The domain name is unusually long",
+    "path_length": "The URL path is unusually long",
+    "query_length": "The URL has a long query string with many parameters",
+    "fragment_length": "The URL contains an unusual fragment section",
+    "subdomain_depth": "The domain has many subdomains, making the real host hard to see",
+    "path_depth": "The URL has a deeply nested path structure",
+    "digit_ratio": "The domain name contains an unusual number of digits",
+    "hyphen_count": "The domain name contains many hyphens",
+    "at_sign": "The URL contains an @ sign that can redirect to a different site",
+    "has_at_in_path": "The URL path contains an @ sign",
+    "ip_as_host": "The website uses a raw IP address instead of a domain name",
+    "punycode": "The domain uses international characters that can mimic real brands",
+    "entropy": "The domain name looks randomly generated",
+    "tld_risk": "The domain uses a top-level domain often abused by phishing sites",
+    "keyword_count": "The URL contains words commonly used in phishing (login, verify, etc.)",
+    "is_shortener": "The URL uses a link-shortening service that hides the real destination",
+    "has_double_slash_redirect": "The URL contains a redirect trick using double slashes",
+    "non_standard_port": "The website uses a non-standard port number",
+    "uses_https": "The website does not use secure HTTPS encryption",
+}
+
+
+def _get_model():
+    """Lazy-load the model and SHAP explainer once."""
+    global _model, _explainer, _feature_names, _model_load_attempted
+    if _model_load_attempted:
+        return _model, _explainer, _feature_names
+
+    _model_load_attempted = True
+    if not MODEL_PATH.exists():
+        logger.info("Model not found at %s – will use heuristic scoring", MODEL_PATH)
+        return None, None, None
+
+    try:
+        import joblib
+        import shap
+
+        loaded = joblib.load(MODEL_PATH)
+        _model = loaded["model"]
+        _feature_names = loaded["feature_names"]
+        _explainer = shap.TreeExplainer(_model)
+        logger.info("Loaded threat ML model from %s", MODEL_PATH)
+    except Exception as exc:
+        logger.warning("Failed to load ML model: %s", exc)
+        _model = None
+        _explainer = None
+        _feature_names = None
+
+    return _model, _explainer, _feature_names
+
+
+def _ml_predict(
+    features: dict,
+) -> tuple[int, float, list[Finding]] | tuple[None, None, list[Finding]]:
+    """Predict phishing probability and return score (0-100), confidence, and SHAP findings."""
+    model, explainer, feature_names = _get_model()
+    if model is None:
+        return None, None, []
+
+    try:
+        import pandas as pd
+
+        X = pd.DataFrame([features])
+        prob = float(model.predict_proba(X)[0][1])
+        score = int(round(prob * 100))
+        confidence = 0.85  # ML model with group-split evaluation gives high confidence
+
+        # SHAP explanations
+        findings: list[Finding] = []
+        if explainer is not None:
+            shap_values = explainer.shap_values(X)
+            sv = shap_values[1][0] if isinstance(shap_values, list) else shap_values[0]
+
+            contributions = list(zip(feature_names, sv, [features.get(f, 0) for f in feature_names]))
+            contributions.sort(key=lambda x: abs(x[1]), reverse=True)
+
+            for fname, shap_val, fval in contributions[:4]:
+                if shap_val <= 0.1:
+                    continue  # only report features that increase phishing risk
+
+                abs_sv = abs(shap_val)
+                if abs_sv > 1.0:
+                    severity = "high"
+                elif abs_sv > 0.4:
+                    severity = "medium"
+                else:
+                    severity = "low"
+
+                title = FEATURE_EXPLANATIONS.get(fname, f"Suspicious pattern in {fname}")
+                findings.append(Finding(
+                    id=f"THREAT_ML_{fname.upper()}",
+                    severity=severity,
+                    title=title,
+                    detail=f"Detected pattern: {fname} = {fval}",
+                    evidence={"feature": fname, "value": fval, "shap_importance": round(float(shap_val), 3)},
+                ))
+
+        return score, confidence, findings
+
+    except Exception as exc:
+        logger.warning("ML prediction failed: %s", exc)
+        return None, None, []
+
+
+# ── Public contract ──────────────────────────────────────────────────
 
 async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
     """Run all threat-analysis checks and return a unified ModuleResult.
@@ -27,35 +257,32 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
     findings: list[Finding] = []
     errors: list[str] = []
 
-    # ── 1. URL lexical features ─────────────────────────────────────
+    # 1. Feature extraction
     try:
         features = extract_features(url)
-
-        # Add informational findings for suspicious features
-        _add_feature_findings(features, findings)
-
-    except Exception as exc:  # pragma: no cover – defensive
+        _add_heuristic_findings(features, findings)
+    except Exception as exc:
         logger.exception("url_features failed for %s", url)
         errors.append(f"URL feature extraction failed: {exc}")
         features = {}
 
-    # ── 2. Brand impersonation ──────────────────────────────────────
+    # 2. Brand impersonation
+    brand_findings: list[Finding] = []
     try:
         brand_findings = check_brand_impersonation(url)
         findings.extend(brand_findings)
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         logger.exception("brand check failed for %s", url)
         errors.append(f"Brand impersonation check failed: {exc}")
 
-    # ── 3. ML model (placeholder – wired in H8-16) ─────────────────
-    ml_score: int | None = None
-    ml_confidence: float | None = None
-    try:
-        ml_score, ml_confidence = _try_ml_predict(url, features)
-    except Exception as exc:
-        logger.debug("ML model unavailable: %s", exc)
+    # 3. ML prediction + SHAP
+    ml_score = None
+    ml_confidence = None
+    if features:
+        ml_score, ml_confidence, shap_findings = _ml_predict(features)
+        findings.extend(shap_findings)
 
-    # ── 4. Compute final score ──────────────────────────────────────
+    # 4. Final score & confidence
     if ml_score is not None and ml_confidence is not None:
         score = ml_score
         confidence = ml_confidence
@@ -64,12 +291,12 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
     else:
         score, confidence = 50, 0.2
 
-    # Brand impersonation bumps score
+    # Brand impersonation strongly elevates risk
     if brand_findings:
-        score = max(score, 55)
-        confidence = max(confidence, 0.6)
+        score = max(score, 60)
+        confidence = max(confidence, 0.7)
 
-    score = min(score, 100)
+    score = min(max(score, 0), 100)
 
     return ModuleResult(
         module="threat",
@@ -80,108 +307,23 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
     )
 
 
-# ── helpers ─────────────────────────────────────────────────────────
-
-def _add_feature_findings(features: dict, findings: list[Finding]) -> None:
-    """Translate suspicious features into plain-language findings."""
-
+def _add_heuristic_findings(features: dict, findings: list[Finding]) -> None:
+    """Fallback findings when ML model is unavailable."""
     if features.get("ip_as_host"):
         findings.append(Finding(
             id="THREAT_IP_AS_HOST",
             severity="high",
             title="Website uses a raw IP address instead of a domain name",
-            detail="Legitimate websites almost always use named domains.",
         ))
-
-    if features.get("punycode"):
-        findings.append(Finding(
-            id="THREAT_PUNYCODE",
-            severity="medium",
-            title="Domain uses special international characters (punycode)",
-            detail="This can be used to make a domain look like a well-known brand.",
-        ))
-
     if features.get("tld_risk"):
         findings.append(Finding(
             id="THREAT_RISKY_TLD",
             severity="medium",
             title="Domain uses a high-risk top-level domain",
-            detail="Free or cheap TLDs like .tk, .ml, .xyz are heavily abused by phishing sites.",
         ))
-
     if features.get("is_shortener"):
         findings.append(Finding(
             id="THREAT_URL_SHORTENER",
             severity="medium",
             title="URL uses a link-shortening service",
-            detail="Shortened links hide the real destination, which is a common phishing tactic.",
         ))
-
-    if features.get("at_sign") or features.get("has_at_in_path"):
-        findings.append(Finding(
-            id="THREAT_AT_SIGN",
-            severity="high",
-            title="URL contains an '@' sign that may redirect to a different site",
-            detail="An '@' in a URL can trick browsers into treating everything before it as a username.",
-        ))
-
-    kw_count = features.get("keyword_count", 0)
-    if kw_count >= 3:
-        findings.append(Finding(
-            id="THREAT_SUSPICIOUS_KEYWORDS",
-            severity="medium",
-            title="URL contains multiple suspicious keywords",
-            detail=f"Found {kw_count} keywords commonly used in phishing URLs.",
-        ))
-
-    if features.get("subdomain_depth", 0) >= 3:
-        findings.append(Finding(
-            id="THREAT_DEEP_SUBDOMAINS",
-            severity="medium",
-            title="Domain has unusually many subdomains",
-            detail="Excessive subdomains can disguise the real domain.",
-            evidence={"subdomain_depth": features["subdomain_depth"]},
-        ))
-
-    if features.get("entropy", 0) > 4.5:
-        findings.append(Finding(
-            id="THREAT_HIGH_ENTROPY",
-            severity="low",
-            title="Domain name looks randomly generated",
-            detail="High randomness in a domain name is unusual for legitimate sites.",
-            evidence={"entropy": features["entropy"]},
-        ))
-
-    if features.get("non_standard_port"):
-        findings.append(Finding(
-            id="THREAT_NON_STANDARD_PORT",
-            severity="medium",
-            title="Website uses a non-standard port",
-            detail="Most legitimate websites use port 80 or 443.",
-        ))
-
-    if not features.get("uses_https"):
-        findings.append(Finding(
-            id="THREAT_NO_HTTPS",
-            severity="low",
-            title="Website does not use HTTPS encryption",
-            detail="Sensitive pages should always be served over HTTPS.",
-        ))
-
-    if features.get("has_double_slash_redirect"):
-        findings.append(Finding(
-            id="THREAT_DOUBLE_SLASH_REDIRECT",
-            severity="low",
-            title="URL path contains a double-slash that may indicate a redirect trick",
-        ))
-
-
-def _try_ml_predict(
-    url: str, features: dict
-) -> tuple[int, float] | tuple[None, None]:
-    """Attempt ML model prediction. Returns (score, confidence) or (None, None).
-
-    Wired properly in H8-16 once the model is trained.
-    """
-    # TODO(P2-H8-16): Load model.joblib, run predict_proba, SHAP explanations
-    return None, None
