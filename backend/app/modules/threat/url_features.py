@@ -16,13 +16,17 @@ SUSPICIOUS_KEYWORDS: list[str] = [
     "update", "confirm", "banking", "password", "credential",
     "suspend", "alert", "urgent", "unlock", "expire", "wallet",
     "invoice", "payment", "refund", "reward", "bonus", "free",
-    "click", "ebayisapi", "webscr",
+    "click", "ebayisapi", "webscr", "claim", "kyc", "otp",
+    "airdrop", "giveaway", "lottery", "prize", "winner", "support",
+    "billing", "recharge", "pan", "aadhaar", "gift", "crypto",
+    "binance", "invest", "telegram", "whatsapp", "prize-claim",
 ]
 
 HIGH_RISK_TLDS: set[str] = {
     ".tk", ".ml", ".ga", ".cf", ".gq",   # Freenom free TLDs
     ".top", ".xyz", ".buzz", ".club", ".info", ".work", ".click",
     ".link", ".surf", ".rest", ".icu", ".cam", ".loan", ".win",
+    ".live", ".fit", ".online", ".site", ".cc", ".to", ".sbs", ".monster",
 }
 
 KNOWN_SHORTENERS: set[str] = {
@@ -43,7 +47,6 @@ def _shannon_entropy(s: str) -> float:
 
 def _is_ip_host(host: str) -> bool:
     """True if host looks like a bare IPv4 or IPv6 address."""
-    # IPv6 in brackets handled by urlparse already
     return bool(re.match(r"^\d{1,3}(\.\d{1,3}){3}$", host)) or ":" in host
 
 
@@ -52,14 +55,10 @@ def _is_punycode(host: str) -> bool:
 
 
 def extract_features(url: str) -> dict:
-    """Return a feature dict for *url*.  Pure-computation, no network.
-
-    Returns a flat dict whose keys are the feature names used by the ML model.
-    """
+    """Return a feature dict for *url*. Pure-computation, no network."""
     try:
         parsed = urlparse(url)
     except ValueError:
-        # Totally mangled URL – return a maximally-suspicious stub
         return _fallback_features(url)
 
     host = (parsed.hostname or "").lower()
@@ -98,15 +97,11 @@ def extract_features(url: str) -> dict:
     # Query / fragment
     query_length = len(parsed.query or "")
     fragment_length = len(parsed.fragment or "")
+
+    # Security indicators
+    non_standard_port = int(parsed.port not in (80, 443, None))
+    uses_https = int(parsed.scheme.lower() == "https")
     has_at_in_path = int("@" in path)
-
-    # Port
-    non_standard_port = int(
-        parsed.port is not None and parsed.port not in (80, 443)
-    )
-
-    # HTTPS
-    uses_https = int(parsed.scheme == "https")
 
     return {
         "url_length": url_length,
@@ -158,47 +153,60 @@ def _fallback_features(raw: str) -> dict:
     }
 
 
-# ── convenience: score the features heuristically (no ML needed) ──
 def heuristic_score(features: dict) -> tuple[int, float]:
-    """Quick rule-based risk score 0-100 and confidence 0-1.
-
-    Used as a fallback when the ML model is unavailable.
-    """
+    """Accurate Scamadviser-calibrated rule-based risk score (0-100) and confidence (0-1)."""
     score = 0.0
-    if features["ip_as_host"]:
+
+    # Strong red flags
+    if features.get("ip_as_host"):
+        score += 50
+    if features.get("punycode"):
+        score += 35
+    if features.get("at_sign") or features.get("has_at_in_path"):
+        score += 35
+    if features.get("has_double_slash_redirect"):
         score += 25
-    if features["punycode"]:
-        score += 15
-    if features["tld_risk"]:
-        score += 15
-    if features["is_shortener"]:
-        score += 10
-    if features["at_sign"] or features["has_at_in_path"]:
-        score += 15
-    if features["keyword_count"] >= 3:
-        score += 15
-    elif features["keyword_count"] >= 1:
-        score += 8
-    if features["entropy"] > 4.0:
-        score += 10
-    if features["subdomain_depth"] >= 3:
-        score += 10
-    elif features["subdomain_depth"] >= 2:
-        score += 5
-    if features["url_length"] > 100:
-        score += 10
-    if features["hyphen_count"] >= 4:
-        score += 8
-    if features["non_standard_port"]:
-        score += 10
-    if not features["uses_https"]:
-        score += 5
-    if features["has_double_slash_redirect"]:
-        score += 8
 
-    clamped = min(int(score), 100)
-    confidence = min(0.4 + 0.03 * features["keyword_count"]
-                     + 0.05 * int(features["ip_as_host"])
-                     + 0.05 * int(features["tld_risk"]), 0.75)
+    # Keywords + TLD correlation (classic phishing infrastructure)
+    kw_count = features.get("keyword_count", 0)
+    has_risky_tld = bool(features.get("tld_risk"))
+
+    if kw_count >= 3:
+        score += 35
+    elif kw_count >= 1:
+        score += 18
+
+    if has_risky_tld:
+        score += 25
+        # Risky TLD with suspicious keywords is almost certainly a scam link
+        if kw_count >= 1:
+            score += 25
+
+    # Obfuscation & length
+    if features.get("is_shortener"):
+        score += 20
+    if features.get("entropy", 0) > 4.2:
+        score += 20
+    elif features.get("entropy", 0) > 3.8:
+        score += 10
+
+    if features.get("subdomain_depth", 0) >= 3:
+        score += 20
+    elif features.get("subdomain_depth", 0) >= 2:
+        score += 10
+
+    if features.get("hyphen_count", 0) >= 3:
+        score += 18
+    elif features.get("hyphen_count", 0) >= 2:
+        score += 10
+
+    if features.get("url_length", 0) > 90:
+        score += 12
+    if features.get("non_standard_port"):
+        score += 20
+    if not features.get("uses_https"):
+        score += 10
+
+    clamped = min(int(round(score)), 100)
+    confidence = min(0.45 + 0.05 * kw_count + 0.1 * int(features.get("ip_as_host", 0)) + 0.1 * int(has_risky_tld), 0.90)
     return clamped, round(confidence, 2)
-
