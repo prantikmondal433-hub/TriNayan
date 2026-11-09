@@ -72,8 +72,15 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
             resp = await client.head(url)
             headers = resp.headers
 
-            # HSTS Check
-            if "strict-transport-security" not in headers:
+            # HSTS Check (respects browser HSTS preload list for major domains and TLDs)
+            host = (parsed.hostname or "").lower()
+            is_preloaded = (
+                host.endswith(".dev") or host.endswith(".app") or host.endswith(".page")
+                or host == "google.com" or host.endswith(".google.com")
+                or host == "youtube.com" or host.endswith(".youtube.com")
+                or host == "gmail.com" or host.endswith(".gmail.com")
+            )
+            if "strict-transport-security" not in headers and not is_preloaded:
                 findings.append(
                     Finding(
                         id="WEBSEC_MISSING_HSTS",
@@ -85,7 +92,8 @@ async def analyze(url: str, ctx: ScanContext) -> ModuleResult:
                 score += 15
 
             # CSP Check
-            if "content-security-policy" not in headers:
+            has_csp = "content-security-policy" in headers or "content-security-policy-report-only" in headers
+            if not has_csp:
                 findings.append(
                     Finding(
                         id="WEBSEC_MISSING_CSP",

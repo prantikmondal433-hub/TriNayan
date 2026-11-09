@@ -99,6 +99,19 @@ def reload_brands() -> None:
     _load_brands()
 
 
+def is_official_brand_domain(host: str) -> bool:
+    """Return True if host is an authentic, official domain of a registered brand."""
+    if not host:
+        return False
+    host = host.lower().strip(".")
+    for brand in _load_brands():
+        for d in brand.get("domains", []):
+            d = d.lower().strip(".")
+            if host == d or host.endswith(f".{d}"):
+                return True
+    return False
+
+
 # ── public API ──────────────────────────────────────────────────────
 
 def check_brand_impersonation(url: str) -> list[Finding]:

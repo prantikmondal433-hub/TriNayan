@@ -126,6 +126,46 @@ def _tls_connect(
     ip: str, port: int, hostname: str, timeout: float
 ) -> tuple[bytes, list[bytes], bytes | None]:
     """Connect to *ip*:*port* with SNI=*hostname*, return (leaf_der, chain_ders, stapled_ocsp)."""
+    # 1. Try pyOpenSSL first to reliably retrieve the full peer certificate chain
+    try:
+        import OpenSSL
+        import select
+
+        sock = socket.create_connection((ip, port), timeout=timeout)
+        sock.setblocking(False)
+        ctx = OpenSSL.SSL.Context(OpenSSL.SSL.TLS_CLIENT_METHOD)
+        conn = OpenSSL.SSL.Connection(ctx, sock)
+        conn.set_tlsext_host_name(hostname.encode("idna"))
+        conn.set_connect_state()
+
+        while True:
+            try:
+                conn.do_handshake()
+                break
+            except OpenSSL.SSL.WantReadError:
+                rd, _, _ = select.select([sock], [], [], min(timeout, 3.0))
+                if not rd:
+                    raise socket.timeout("TLS handshake read timeout")
+            except OpenSSL.SSL.WantWriteError:
+                _, wr, _ = select.select([], [sock], [], min(timeout, 3.0))
+                if not wr:
+                    raise socket.timeout("TLS handshake write timeout")
+
+        chain = conn.get_peer_cert_chain() or []
+        chain_der_list = [
+            OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, c)
+            for c in chain
+        ]
+        leaf_der = chain_der_list[0] if chain_der_list else None
+        conn.close()
+        if leaf_der is not None:
+            return leaf_der, chain_der_list, None
+    except (socket.timeout, TimeoutError, ConnectionRefusedError, ConnectionResetError, OSError):
+        raise
+    except Exception as exc:
+        logger.debug("pyOpenSSL handshake failed, falling back to stdlib ssl: %s", exc)
+
+    # 2. Fallback to stdlib ssl
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False   # we verify manually
     ctx.verify_mode = ssl.CERT_NONE  # we want to inspect even bad certs

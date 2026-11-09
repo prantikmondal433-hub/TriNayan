@@ -90,6 +90,7 @@ def test_health_reports_components():
 
 @pytest.mark.asyncio
 async def test_redis_cache_used_when_available(monkeypatch):
+    orchestrator._cache.clear()
     class FakeRedis:
         def __init__(self):
             self.store = {}
