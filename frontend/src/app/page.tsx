@@ -1,32 +1,112 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  Shield,
+  Globe,
   Search,
   AlertTriangle,
   Lock,
-  Globe,
-  Clock,
-  ArrowRight,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { getHistory, clearHistory, HistoryEntry } from "@/lib/api";
-import { verdictColor } from "@/lib/utils";
 import { useLanguage } from "@/context/LanguageContext";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { SplashLoader } from "@/components/SplashLoader";
+import { verdictColor } from "@/lib/utils";
+import { Verdict } from "@/lib/types";
+
+const DEFAULT_SAMPLE_SCANS: HistoryEntry[] = [
+  {
+    url: "https://www.youtube.com",
+    risk: 0,
+    verdict: "Safe",
+    scanned_at: new Date().toISOString(),
+  },
+  {
+    url: "https://www.google.com",
+    risk: 0,
+    verdict: "Safe",
+    scanned_at: new Date().toISOString(),
+  },
+  {
+    url: "https://www.abcxyz.com",
+    risk: 85,
+    verdict: "Dangerous",
+    scanned_at: new Date().toISOString(),
+  },
+];
 
 export default function HomePage() {
   const router = useRouter();
   const { t, tVerdict } = useLanguage();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>(DEFAULT_SAMPLE_SCANS);
+
+  // Splash screen state with sessionStorage flag & fade out
+  const [showSplash, setShowSplash] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+
+  // Scroll section ref for IntersectionObserver
+  const featureSectionRef = useRef<HTMLDivElement>(null);
+  const [featuresVisible, setFeaturesVisible] = useState(false);
 
   useEffect(() => {
-    setHistory(getHistory());
+    // Check if splash was already shown in this session
+    try {
+      if (sessionStorage.getItem("trinayan_splash_seen")) {
+        queueMicrotask(() => setShowSplash(false));
+        return;
+      }
+    } catch {
+      // Ignore sessionStorage exceptions
+    }
+
+    const minTimer = setTimeout(() => {
+      setIsFadingOut(true);
+      setTimeout(() => {
+        setShowSplash(false);
+        try {
+          sessionStorage.setItem("trinayan_splash_seen", "true");
+        } catch {
+          // Ignore
+        }
+      }, 400); // 400ms fade-out transition
+    }, 950); // min 950ms splash display
+
+    return () => clearTimeout(minTimer);
+  }, []);
+
+  useEffect(() => {
+    // Load recent scans history
+    const saved = getHistory();
+    if (saved && saved.length > 0) {
+      queueMicrotask(() => setHistory(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    // IntersectionObserver for 2x2 feature cards scroll reveal
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          setFeaturesVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    if (featureSectionRef.current) {
+      observer.observe(featureSectionRef.current);
+    }
+
+    return () => observer.disconnect();
   }, []);
 
   function handleClearHistory() {
@@ -40,7 +120,7 @@ export default function HomePage() {
 
     let target = url.trim();
     if (!target) {
-      setError("Please enter a URL to scan.");
+      setError(t("fieldRequired") || "Please enter a URL to inspect.");
       return;
     }
     if (!/^https?:\/\//i.test(target)) {
@@ -50,197 +130,230 @@ export default function HomePage() {
     try {
       new URL(target);
     } catch {
-      setError("Please enter a valid web address.");
+      setError(t("invalidUrl") || "Please enter a valid web address.");
       return;
     }
 
     router.push(`/result?url=${encodeURIComponent(target)}`);
   }
 
-  const examples = [
-    { label: "Legitimate (GitHub)", url: "https://github.com" },
-    { label: "Fake SBI Portal (Phishing)", url: "https://sbi-login-secure.xyz" },
-    { label: "Global Brand (Google)", url: "https://google.com" },
-  ];
-
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex flex-col">
-      {/* Top Navbar */}
-      <nav className="flex items-center gap-3 px-6 py-4 border-b border-slate-800">
-        <Shield className="text-blue-400" size={24} />
-        <span className="font-bold text-white text-lg tracking-tight">TrustLens</span>
+    <>
+      {showSplash && <SplashLoader isFadingOut={isFadingOut} />}
 
-        <div className="ml-auto flex items-center gap-3 sm:gap-4 text-xs">
-          {/* Language Selector */}
-          <LanguageSelector />
+      <main className="min-h-screen bg-[var(--tn-bg)] text-[var(--tn-text)] flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+        {/* ── Sticky Transparent Header ── */}
+        <header className="sticky top-0 z-40 bg-[var(--tn-bg)]/85 backdrop-blur-md border-b border-[var(--tn-border)] transition-colors">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+            {/* Left: Brand Logo & Title */}
+            <Link
+              href="/"
+              className="flex items-center gap-3 focus-ring rounded-lg group"
+              aria-label="TriNayan Home"
+            >
+              <div className="relative w-8 h-9 sm:w-9 sm:h-10 shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="TriNayan Security Shield"
+                  fill
+                  priority
+                  sizes="36px"
+                  className="object-contain transition-transform group-hover:scale-105"
+                />
+              </div>
+              <span className="font-extrabold text-[var(--tn-text)] text-xl sm:text-2xl tracking-tight">
+                TriNayan
+              </span>
+            </Link>
 
-          <Link
-            href="/monitor"
-            className="text-slate-400 hover:text-slate-200 transition-colors hidden sm:inline"
+            {/* Right: Language Selector & Report Phishing Pill */}
+            <div className="flex items-center gap-3 sm:gap-5">
+              <LanguageSelector />
+              <Link
+                href="/report"
+                className="px-4 py-1.5 rounded-full border border-white/60 hover:border-white text-xs sm:text-sm font-semibold text-[var(--tn-text)] bg-white/5 hover:bg-white/10 transition-all focus-ring shadow-sm active:scale-95"
+              >
+                {t("reportPhishing")}
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* ── Hero Section (Image 2) ── */}
+        <section className="flex-1 flex flex-col items-center px-4 pt-8 sm:pt-14 pb-12 max-w-4xl mx-auto w-full text-center">
+          {/* Passive Security Pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--tn-border-medium)] bg-[var(--tn-surface)]/70 text-xs text-[var(--tn-text-secondary)] shadow-inner mb-6">
+            <Lock size={13} className="text-slate-400 shrink-0" aria-hidden="true" />
+            <span>{t("heroBadge")}</span>
+          </div>
+
+          {/* Supporting paragraph with consistent TriNayan brand name */}
+          <p className="text-[var(--tn-text-secondary)] text-xs sm:text-sm md:text-base max-w-2xl leading-relaxed mb-6 px-2">
+            {t("heroSubtitle")}
+          </p>
+
+          {/* Gradient Headline */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-8">
+            <span className="text-gradient-headline">
+              {t("heroTitle1")} {t("heroTitleHighlight")}
+            </span>
+          </h1>
+
+          {/* URL Search Bar */}
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-2xl flex flex-col items-center"
+            role="search"
+            aria-label="URL Security Inspector"
           >
-            {t("ctSentinel")}
-          </Link>
-          <Link
-            href="/report"
-            className="text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            {t("reportPhishing")}
-          </Link>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <div className="flex flex-col items-center justify-center flex-1 px-4 py-12 text-center max-w-4xl mx-auto w-full">
-        {/* Safety Badge */}
-        <div className="mb-6 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-full px-4 py-1.5">
-          <Lock size={13} className="text-blue-400" />
-          <span className="text-blue-300 text-xs font-medium">
-            {t("heroBadge")}
-          </span>
-        </div>
-
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight tracking-tight">
-          {t("heroTitle1")}{" "}
-          <span className="text-blue-400">{t("heroTitleHighlight")}</span>
-        </h1>
-        <p className="text-slate-400 text-base sm:text-lg max-w-xl mb-10 leading-relaxed">
-          {t("heroSubtitle")}
-        </p>
-
-        {/* Scan Input Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="w-full max-w-2xl"
-          aria-label="URL scan form"
-        >
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Globe
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-              />
+            <div className="w-full rounded-full border border-white/60 bg-[var(--tn-surface)] shadow-2xl px-5 py-3 sm:py-3.5 flex items-center gap-3.5 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-500/25 transition-all">
+              <Globe size={20} className="text-[var(--tn-text-secondary)] shrink-0" aria-hidden="true" />
+              <label htmlFor="url-input" className="sr-only">
+                {t("inputPlaceholder")}
+              </label>
               <input
+                id="url-input"
                 type="text"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (error) setError("");
+                }}
                 placeholder={t("inputPlaceholder")}
-                aria-label="URL to scan"
-                className="w-full pl-11 pr-4 py-4 rounded-xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base shadow-lg"
+                className="w-full bg-transparent text-[var(--tn-text)] placeholder-[var(--tn-text-secondary)]/70 placeholder:italic text-sm sm:text-base outline-none font-sans"
               />
             </div>
+
+            {/* Inspect This Button */}
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 px-7 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-lg shadow-blue-600/20 active:scale-[0.98]"
+              className="mt-5 inline-flex items-center justify-center gap-2 px-8 py-2.5 rounded-full bg-gradient-to-r from-slate-400/90 via-slate-100 to-slate-400/90 hover:from-slate-300 hover:via-white hover:to-slate-300 text-slate-950 font-bold text-sm sm:text-base transition-all shadow-md active:scale-95 focus-ring cursor-pointer"
             >
-              <Search size={18} />
-              <span>{t("inspectBtn")}</span>
+              <span>{t("inspectThis")}</span>
+              <Search size={16} className="text-slate-950 shrink-0" aria-hidden="true" />
             </button>
-          </div>
-          {error && (
-            <p className="mt-2.5 text-red-400 text-sm flex items-center justify-center gap-1.5">
-              <AlertTriangle size={14} /> {error}
-            </p>
-          )}
-        </form>
 
-        {/* Demo Examples */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs">
-          <span className="text-slate-500">{t("quickTests")}</span>
-          {examples.map((ex) => (
-            <button
-              key={ex.url}
-              onClick={() => setUrl(ex.url)}
-              className="text-slate-400 hover:text-blue-300 bg-slate-800/60 border border-slate-700/80 px-2.5 py-1 rounded-md transition-colors"
-            >
-              {ex.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Recent Scan History */}
-        {history.length > 0 && (
-          <div className="mt-12 w-full max-w-2xl text-left bg-slate-900/60 border border-slate-800 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock size={14} className="text-slate-500" /> {t("recentScans")}
-              </span>
-              <button
-                onClick={handleClearHistory}
-                className="text-xs text-slate-500 hover:text-slate-400 flex items-center gap-1"
-                title="Clear history"
+            {error && (
+              <p
+                role="alert"
+                className="mt-3 text-[var(--tn-danger)] text-xs sm:text-sm flex items-center gap-1.5 animate-fade-in"
               >
-                <Trash2 size={12} /> {t("clearHistory")}
-              </button>
+                <AlertTriangle size={14} className="shrink-0" />
+                <span>{error}</span>
+              </p>
+            )}
+          </form>
+
+          {/* ── Recent Scans List (Image 2) ── */}
+          <div className="w-full max-w-2xl mt-12 sm:mt-16 text-left">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h2 className="text-base sm:text-lg italic font-sans font-medium text-[var(--tn-text)]">
+                {t("recentScans")}
+              </h2>
+              {history.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  aria-label={t("clearHistory")}
+                  className="text-xs text-[var(--tn-text-secondary)] hover:text-red-400 flex items-center gap-1.5 transition-colors focus-ring rounded px-2 py-0.5"
+                >
+                  <Trash2 size={13} aria-hidden="true" />
+                  <span>{t("clearHistory")}</span>
+                </button>
+              )}
             </div>
-            <div className="space-y-2">
+
+            <div className="space-y-3" role="list" aria-label="Recent scans history">
               {history.map((h, i) => {
-                const color = verdictColor(h.verdict as any);
+                const color = verdictColor(h.verdict as Verdict);
                 return (
                   <Link
-                    key={i}
+                    key={`${h.url}-${i}`}
                     href={`/result?url=${encodeURIComponent(h.url)}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800/40 hover:bg-slate-800 border border-slate-800 transition-colors group"
+                    role="listitem"
+                    className="flex items-center justify-between px-5 py-3 rounded-full border border-white/60 bg-[var(--tn-surface)]/80 hover:bg-[var(--tn-surface-hover)] hover:border-white transition-all shadow-sm group focus-ring"
                   >
-                    <span className="text-xs sm:text-sm text-slate-300 font-mono truncate max-w-[280px] sm:max-w-[360px]">
+                    <span className="text-xs sm:text-sm italic font-sans text-[var(--tn-text)] truncate max-w-[190px] sm:max-w-[380px]">
                       {h.url}
                     </span>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${color.bg} ${color.text}`}
-                      >
-                        {tVerdict(h.verdict as any)} ({h.risk})
+
+                    <span
+                      className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-transform group-hover:scale-105 shrink-0 ${color.chip}`}
+                    >
+                      <span>
+                        {tVerdict(h.verdict as Verdict)} ({h.risk})
                       </span>
-                      <ArrowRight
-                        size={14}
-                        className="text-slate-600 group-hover:text-slate-300 transition-colors"
-                      />
-                    </div>
+                      <ArrowRight size={13} aria-hidden="true" />
+                    </span>
                   </Link>
                 );
               })}
             </div>
           </div>
-        )}
+        </section>
 
-        {/* Feature Highlights Grid */}
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
-          {[
-            {
-              icon: "🎯",
-              title: t("threatModule"),
-              desc: "Brand lookalikes, homoglyphs, and lexical heuristic checks.",
-            },
-            {
-              icon: "🔒",
-              title: t("certModule"),
-              desc: "CT log search, CA key reuse detection, and crypto audits.",
-            },
-            {
-              icon: "🛡️",
-              title: t("websecModule"),
-              desc: "Passive header posture (HSTS, CSP) and cookie security flags.",
-            },
-            {
-              icon: "👥",
-              title: t("communityModule"),
-              desc: "Collaborative crowdsourced reports and live blocklists.",
-            },
-          ].map((f) => (
-            <div
-              key={f.title}
-              className="bg-slate-800/40 border border-slate-800 rounded-xl p-5 text-left hover:border-slate-700 transition-colors"
-            >
-              <div className="text-2xl mb-2">{f.icon}</div>
-              <div className="text-white font-semibold text-sm mb-1">{f.title}</div>
-              <div className="text-slate-400 text-xs leading-relaxed">{f.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+        {/* ── Scroll Section: 2x2 Feature Cards Grid (Image 3) ── */}
+        <section
+          ref={featureSectionRef}
+          aria-label="Security inspection modules"
+          className="w-full max-w-4xl mx-auto px-4 py-12 sm:py-16"
+        >
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 gap-5 transition-all duration-700 ${
+              featuresVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
+          >
+            {/* Card 1: Threat & Lexical Analysis */}
+            <article className="rounded-[var(--tn-radius-card)] border border-white/60 bg-[var(--tn-surface)] p-6 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 hover:border-white hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="border border-white/70 rounded-full px-4 py-1.5 text-[var(--tn-text)] font-bold text-sm sm:text-base flex items-center gap-2.5 w-fit mb-3.5 bg-[var(--tn-bg)]/80 shadow-inner">
+                <span className="text-base" aria-hidden="true">🎯</span>
+                <h2>{t("threatModule")}</h2>
+              </div>
+              <p className="text-[var(--tn-text-secondary)] text-xs sm:text-sm leading-relaxed">
+                {t("threatDesc")}
+              </p>
+            </article>
 
-      <footer className="text-center py-4 text-slate-600 text-xs border-t border-slate-800">
-        TrustLens Security · Results represent probabilistic risk signals · Passive scanning only
-      </footer>
-    </main>
+            {/* Card 2: Certificate Trust */}
+            <article className="rounded-[var(--tn-radius-card)] border border-white/60 bg-[var(--tn-surface)] p-6 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 hover:border-white hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="border border-white/70 rounded-full px-4 py-1.5 text-[var(--tn-text)] font-bold text-sm sm:text-base flex items-center gap-2.5 w-fit mb-3.5 bg-[var(--tn-bg)]/80 shadow-inner">
+                <span className="text-base" aria-hidden="true">🔒</span>
+                <h2>{t("certModule")}</h2>
+              </div>
+              <p className="text-[var(--tn-text-secondary)] text-xs sm:text-sm leading-relaxed">
+                {t("certDesc")}
+              </p>
+            </article>
+
+            {/* Card 3: Security Headers & Cookies (Fixed Title) */}
+            <article className="rounded-[var(--tn-radius-card)] border border-white/60 bg-[var(--tn-surface)] p-6 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 hover:border-white hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="border border-white/70 rounded-full px-4 py-1.5 text-[var(--tn-text)] font-bold text-sm sm:text-base flex items-center gap-2.5 w-fit mb-3.5 bg-[var(--tn-bg)]/80 shadow-inner">
+                <span className="text-base" aria-hidden="true">🛡️</span>
+                <h2>{t("websecModule")}</h2>
+              </div>
+              <p className="text-[var(--tn-text-secondary)] text-xs sm:text-sm leading-relaxed">
+                {t("websecDesc")}
+              </p>
+            </article>
+
+            {/* Card 4: Community Threat Intel */}
+            <article className="rounded-[var(--tn-radius-card)] border border-white/60 bg-[var(--tn-surface)] p-6 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 hover:border-white hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="border border-white/70 rounded-full px-4 py-1.5 text-[var(--tn-text)] font-bold text-sm sm:text-base flex items-center gap-2.5 w-fit mb-3.5 bg-[var(--tn-bg)]/80 shadow-inner">
+                <span className="text-base" aria-hidden="true">👥</span>
+                <h2>{t("communityModule")}</h2>
+              </div>
+              <p className="text-[var(--tn-text-secondary)] text-xs sm:text-sm leading-relaxed">
+                {t("communityDesc")}
+              </p>
+            </article>
+          </div>
+        </section>
+
+        {/* ── Footer Disclaimer ── */}
+        <footer className="text-center text-[var(--tn-text-muted)] text-xs py-8 border-t border-[var(--tn-border)]">
+          <p>{t("footerDisclaimer")}</p>
+        </footer>
+      </main>
+    </>
   );
 }

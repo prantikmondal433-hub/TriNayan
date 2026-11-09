@@ -18,7 +18,7 @@ const LanguageContext = createContext<LanguageContextType>({
   tVerdict: (v) => v,
 });
 
-const LANG_STORAGE_KEY = "trustlens_user_lang";
+const LANG_STORAGE_KEY = "trinayan_user_lang";
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<SupportedLang>("en");
@@ -27,7 +27,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = localStorage.getItem(LANG_STORAGE_KEY) as SupportedLang;
       if (stored && (stored === "en" || stored === "hi" || stored === "bn")) {
-        setLangState(stored);
+        queueMicrotask(() => setLangState(stored));
       }
     } catch {
       // Ignore localStorage issues
@@ -44,8 +44,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }
 
   function t(key: TranslationKey): string {
-    const dict = TRANSLATIONS[lang] || TRANSLATIONS.en;
-    return (dict as any)[key] || TRANSLATIONS.en[key] || key;
+    const dict = (TRANSLATIONS[lang] || TRANSLATIONS.en) as Record<TranslationKey, string>;
+    return dict[key] || TRANSLATIONS.en[key] || key;
   }
 
   function tVerdict(verdict: Verdict): string {

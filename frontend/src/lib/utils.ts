@@ -10,28 +10,32 @@ export function verdictColor(verdict: Verdict) {
   return (
     {
       Safe: {
-        bg: "bg-green-500/10",
-        border: "border-green-500",
-        text: "text-green-400",
-        ring: "#22c55e",
+        bg: "bg-[var(--tn-safe-bg)]",
+        border: "border-[var(--tn-safe-border)]",
+        text: "text-emerald-400",
+        ring: "#10B981",
+        chip: "bg-[var(--tn-safe)] text-white",
       },
       Suspicious: {
-        bg: "bg-yellow-500/10",
-        border: "border-yellow-500",
-        text: "text-yellow-400",
-        ring: "#eab308",
+        bg: "bg-[var(--tn-warning-bg)]",
+        border: "border-[var(--tn-warning-border)]",
+        text: "text-amber-400",
+        ring: "#F59E0B",
+        chip: "bg-[var(--tn-warning)] text-slate-950 font-bold",
       },
       Dangerous: {
-        bg: "bg-red-500/10",
-        border: "border-red-500",
+        bg: "bg-[var(--tn-danger-bg)]",
+        border: "border-[var(--tn-danger-border)]",
         text: "text-red-400",
-        ring: "#ef4444",
+        ring: "#EF4444",
+        chip: "bg-[var(--tn-danger)] text-white",
       },
     }[verdict] || {
-      bg: "bg-slate-500/10",
-      border: "border-slate-500",
-      text: "text-slate-400",
-      ring: "#64748b",
+      bg: "bg-slate-800/40",
+      border: "border-[var(--tn-border)]",
+      text: "text-[var(--tn-text-secondary)]",
+      ring: "#64748B",
+      chip: "bg-slate-700 text-white",
     }
   );
 }
@@ -39,11 +43,11 @@ export function verdictColor(verdict: Verdict) {
 export function severityColor(severity: string) {
   return (
     {
-      critical: "bg-red-500/20 text-red-300 border border-red-500/40",
-      high: "bg-orange-500/20 text-orange-300 border border-orange-500/40",
-      medium: "bg-yellow-500/20 text-yellow-300 border border-yellow-500/40",
-      low: "bg-blue-500/20 text-blue-300 border border-blue-500/40",
-    }[severity] ?? "bg-slate-500/20 text-slate-300"
+      critical: "bg-red-500/15 text-red-300 border border-red-500/40",
+      high: "bg-orange-500/15 text-orange-300 border border-orange-500/40",
+      medium: "bg-amber-500/15 text-amber-300 border border-amber-500/40",
+      low: "bg-blue-500/15 text-blue-300 border border-blue-500/40",
+    }[severity] ?? "bg-slate-800/50 text-slate-300 border border-slate-700/50"
   );
 }
 
@@ -56,10 +60,10 @@ export function severityIcon(severity: string): string {
 export function moduleLabel(key: string): string {
   return (
     {
-      threat: "Threat Analysis",
-      websec: "Web Security",
+      threat: "Threat & Lexical Analysis",
+      websec: "Security Headers & Cookies",
       cert: "Certificate Trust",
-      community: "Community Intel",
+      community: "Community Threat Intel",
     }[key] ?? key
   );
 }

@@ -125,33 +125,40 @@ def apply_overrides(usable: dict[str, ModuleResult], base_risk: int, url: str = 
         else:
             return max(base_risk, 50), ACTIONS["Suspicious"]
 
-    # Override 7: Critical certificate flaws (Key reuse, expired cert, or self-signed)
+    # Override 7: Verified Official Brand Platform (ScamAdviser-style Trust Boost)
+    # Legitimate, established platforms (Google, YouTube, Apple, Microsoft, Amazon, etc.)
+    # with no critical or high security issues have verified global authenticity.
+    # MUST come BEFORE generic severity overrides so that low-severity web
+    # hygiene findings (missing CSP, X-Frame-Options, etc.) don't escalate
+    # these well-known domains to "Suspicious".
+    if host:
+        try:
+            if _is_official_domain(host) and not has_bad_cert and not has_unresolvable and not has_brand and not is_risky_tld:
+                # Only cap to 0 (Safe) when there are no critical or high findings
+                has_critical_or_high = any(
+                    f.severity in ("critical", "high") for f in all_findings
+                )
+                if not has_critical_or_high:
+                    return 0, ACTIONS["VerifiedPlatform"]
+        except Exception:
+            pass
+
+    # Override 8: Critical certificate flaws (Key reuse, expired cert, or self-signed)
     has_crit_cert = bool(active_finding_ids & {"CERT_KEY_REUSE"})
     if has_crit_cert:
         return max(base_risk, 75), ACTIONS["Dangerous"]
 
-    # Override 8: Any Critical finding elevates risk to at least Dangerous
+    # Override 9: Any Critical finding elevates risk to at least Dangerous
     has_critical = any(f.severity == "critical" for f in all_findings)
     if has_critical:
         return max(base_risk, 75), ACTIONS["Dangerous"]
 
-    # Override 9: Multiple High findings elevate to at least Suspicious/Dangerous
+    # Override 10: Multiple High findings elevate to at least Suspicious/Dangerous
     high_count = sum(1 for f in all_findings if f.severity == "high")
     if high_count >= 2:
         return max(base_risk, 70), ACTIONS["Dangerous"]
     elif high_count == 1:
         return max(base_risk, 45), ACTIONS["Suspicious"]
-
-    # Override 10: Verified Official Brand Platform (ScamAdviser-style Trust Boost)
-    # Legitimate, established platforms (Google, YouTube, Apple, Microsoft, Amazon, etc.)
-    # with no critical or high security issues have verified global authenticity.
-    if host:
-        try:
-            if _is_official_domain(host) and not has_bad_cert and not has_unresolvable and not has_brand and not is_risky_tld:
-                # Cap risk to 0 (Safe) - minor web hygiene findings shouldn't make Google suspicious
-                return 0, ACTIONS["Safe"]
-        except Exception:
-            pass
 
     return base_risk, None
 

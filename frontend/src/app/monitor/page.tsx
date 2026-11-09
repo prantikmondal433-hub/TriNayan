@@ -7,10 +7,8 @@ import {
   ArrowLeft,
   Bell,
   CheckCircle,
-  AlertTriangle,
   Globe,
   Mail,
-  Search,
 } from "lucide-react";
 
 export default function MonitorPage() {
