@@ -160,7 +160,6 @@ export async function scanUrl(url: string): Promise<{ data: ScanResponse; isLive
     }
 
     return { data: { ...MOCK_SAFE_RESPONSE, url }, isLive: false };
-  }
 }
 
 export async function submitReport(report: ReportRequest): Promise<{ success: boolean; isLive: boolean }> {
