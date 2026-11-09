@@ -126,7 +126,7 @@ async def scan(raw_url: str) -> ScanResponse:
     results = await asyncio.gather(*(_run_module(n, MODULES[n], url, ctx) for n in names))
     by_name = dict(zip(names, results))
 
-    risk, verdict, reasons, action = fuse(by_name)
+    risk, verdict, reasons, action = fuse(by_name, url=url)
     response = ScanResponse(
         url=url, verdict=verdict, risk=risk, reasons=reasons,
         recommended_action=action, modules=by_name,

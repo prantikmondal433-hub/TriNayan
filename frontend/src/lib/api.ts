@@ -21,46 +21,57 @@ const KNOWN_SAFE_DOMAINS = [
 
 export async function scanUrl(url: string): Promise<{ data: ScanResponse; isLive: boolean }> {
   const body: ScanRequest = { url };
-  try {
-    const res = await fetch(`${API_BASE}/scan`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout ? AbortSignal.timeout(18000) : undefined,
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`API returned ${res.status}: ${errText}`);
+  
+  // Try primary API_BASE (http://localhost:8000), then fallback to 127.0.0.1:8000 (Windows IPv6 localhost resolution)
+  const endpoints = [
+    `${API_BASE}/scan`,
+    ...(API_BASE.includes("localhost") ? [`${API_BASE.replace("localhost", "127.0.0.1")}/scan`] : []),
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout ? AbortSignal.timeout(18000) : undefined,
+      });
+      if (res.ok) {
+        const data: ScanResponse = await res.json();
+        return { data, isLive: true };
+      }
+    } catch {
+      // Try next endpoint or fall back
     }
-    const data: ScanResponse = await res.json();
-    return { data, isLive: true };
-  } catch (err) {
-    console.warn("Real API call failed or timed out, executing intelligent client evaluator:", err);
-    await new Promise((r) => setTimeout(r, 1000));
+  }
 
-    const clean = url.toLowerCase().trim();
-    const isKnownSafe = KNOWN_SAFE_DOMAINS.some((d) => clean.includes(d));
+  console.warn("Backend unavailable, executing client security heuristic evaluator");
+  await new Promise((r) => setTimeout(r, 800));
 
-    const isHarmfulOrScam =
-      !isKnownSafe &&
-      (clean.includes("sbi") ||
-        clean.includes("paytm") ||
-        clean.includes("phonepe") ||
-        clean.includes("login") ||
-        clean.includes("verify") ||
-        clean.includes("secure") ||
-        clean.includes("reward") ||
-        clean.includes("claim") ||
-        clean.includes("bonus") ||
-        clean.includes("gift") ||
-        clean.includes("kyc") ||
-        clean.includes("crypto") ||
-        clean.includes("xyz") ||
-        clean.includes("top") ||
-        clean.includes("buzz") ||
-        clean.includes("club") ||
-        clean.includes("work") ||
-        clean.includes("icu"));
+  const clean = url.toLowerCase().trim();
+  const isKnownSafe = KNOWN_SAFE_DOMAINS.some((d) => clean.includes(d));
+
+  const isHarmfulOrScam =
+    !isKnownSafe &&
+    (clean.includes("sbi") ||
+      clean.includes("paytm") ||
+      clean.includes("phonepe") ||
+      clean.includes("login") ||
+      clean.includes("verify") ||
+      clean.includes("secure") ||
+      clean.includes("reward") ||
+      clean.includes("claim") ||
+      clean.includes("bonus") ||
+      clean.includes("gift") ||
+      clean.includes("kyc") ||
+      clean.includes("crypto") ||
+      clean.includes("treasure") ||
+      clean.includes("xyz") ||
+      clean.includes("top") ||
+      clean.includes("buzz") ||
+      clean.includes("club") ||
+      clean.includes("work") ||
+      clean.includes("icu"));
 
     // Check if the domain looks like non-existent garbage / fake URL (e.g. asdasd123.com)
     const isFakeOrGibberish =
